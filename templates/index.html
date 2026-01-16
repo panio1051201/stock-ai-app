@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 全端金融戰情室</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #121212; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        h1 { color: #bb86fc; margin-bottom: 20px; letter-spacing: 1px; }
+        .auth-bar { width: 100%; max-width: 900px; display: flex; justify-content: flex-end; margin-bottom: 10px; }
+        .auth-input { background-color: #333; border: 1px solid #555; color: #03dac6; padding: 5px 10px; border-radius: 4px; font-size: 14px; width: 180px; text-align: center; }
+        .input-group { background-color: #1e1e1e; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; justify-content: center; flex-wrap: wrap; }
+        .input-wrapper { display: flex; flex-direction: column; align-items: flex-start; }
+        .input-wrapper label { font-size: 0.8em; color: #888; margin-bottom: 5px; }
+        input { background-color: #2c2c2c; border: 1px solid #333; color: white; padding: 10px 15px; border-radius: 5px; font-size: 16px; width: 150px; text-align: center; }
+        .controls-container { max-width: 900px; width: 100%; display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
+        .controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+        .btn { padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; background-color: #3700b3; color: white; flex: 1 1 auto; min-width: 110px; }
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+        .btn-adv { background-color: #03dac6; color: #000; }
+        .btn-gold { background: linear-gradient(to right, #f1c40f, #f39c12); color: #fff; border: 1px solid #f39c12; }
+        .btn-green { background-color: #2e7d32; color: white; border: 1px solid #4caf50; }
+        .btn-purple { background: linear-gradient(to right, #6a1b9a, #4a148c); color: white; border: 1px solid #7b1fa2; }
+        .btn-summary { background: linear-gradient(to right, #6200ea, #b388ff); color: white; flex: 2; }
+        .btn-demon { background: linear-gradient(to right, #2c3e50, #000000); color: #ff453a; border: 1px solid #ff453a; flex: 1; }
+        #result-area { width: 100%; max-width: 900px; background-color: #1e1e1e; border-radius: 10px; padding: 20px; display: none; }
+        .header-info { display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; font-size: 1.2em; color: #aaa; }
+        .signal-box { text-align: center; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #333; background-color: #252525; }
+        .signal-title { font-size: 2.2em; font-weight: bold; margin: 0; }
+        .signal-desc { font-size: 1.1em; opacity: 0.9; margin-top: 10px; }
+        .sig-buy { background-color: rgba(255, 69, 58, 0.15); color: #ff453a; border-color: #ff453a; }
+        .sig-sell { background-color: rgba(48, 209, 88, 0.15); color: #30d158; border-color: #30d158; }
+        .sig-hold { background-color: rgba(255, 214, 10, 0.15); color: #ffd60a; border-color: #ffd60a; }
+        .vals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .val-card { background-color: #2c2c2c; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #333; }
+        .val-label { font-size: 0.9em; color: #888; margin-bottom: 5px; }
+        .val-num { font-size: 1.2em; font-weight: bold; color: #fff; word-break: break-word; }
+        .advice-card { grid-column: 1 / -1; background: rgba(3, 218, 198, 0.1); border: 1px solid #03dac6; }
+        .advice-text { color: #03dac6; font-size: 1.3em; }
+        #chart-container { height: 350px; width: 100%; background-color: #252525; border-radius: 8px; padding: 10px; }
+        #loading { display: none; color: #03dac6; font-size: 1.2em; margin: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>🚀 AI 全端金融戰情室</h1>
+    <div class="auth-bar"><input type="text" id="access_code" class="auth-input" placeholder="🔑 會員通行碼 (選填)"></div>
+    <div class="input-group">
+        <div class="input-wrapper"><label>股票代碼 / 中文名稱</label><input type="text" id="code" placeholder="如: 2330 / 台積電" value="2330"></div>
+        <div class="input-wrapper"><label>您的買進成本 (選填)</label><input type="number" id="buy_price" placeholder="例如: 800"></div>
+    </div>
+    <div class="controls-container">
+        <div class="controls">
+            <button class="btn" onclick="run('MA')">MA 均線</button>
+            <button class="btn" onclick="run('KD')">KD 指標</button>
+            <button class="btn" onclick="run('RSI')">RSI 強弱</button>
+            <button class="btn" onclick="run('MACD')">MACD 動能</button>
+            <button class="btn" onclick="run('BOX')">箱型理論</button>
+            <button class="btn" onclick="run('REG')">回歸通道</button>
+        </div>
+        <div class="controls">
+            <button class="btn btn-gold" onclick="run('VALUE')">💎 價值分析</button>
+            <button class="btn btn-green" onclick="run('FINANCIAL')">📊 財報趨勢</button>
+            <button class="btn btn-purple" onclick="run('CHIPS')">🏯 籌碼分析</button>
+        </div>
+        <div class="controls">
+            <span style="color: #888; align-self: center; margin-right: 5px; font-size: 0.9em;">進階組合：</span>
+            <button class="btn btn-adv" onclick="run('KDRSI')">KD + RSI</button>
+            <button class="btn btn-adv" onclick="run('MAKD')">MA + MACD</button>
+            <button class="btn btn-adv" onclick="run('MACDRSI')">MACD + RSI</button>
+        </div>
+        <div class="controls" style="display: flex; gap: 10px;">
+            <button class="btn btn-summary" onclick="run('SUMMARY')">🤖 AI 綜合診斷 (多空總結)</button>
+            <button class="btn btn-demon" onclick="run('DEMON')">🕵️‍♂️ 妖股獵手 (Admin Only)</button>
+        </div>
+    </div>
+    <div id="loading">AI 運算中心連線中...</div>
+    <div id="result-area">
+        <div class="header-info"><span id="stock-name">---</span><span id="stock-price">現價: ---</span></div>
+        <div id="signal-box" class="signal-box sig-hold"><div id="signal-text" class="signal-title">---</div><div id="signal-desc" class="signal-desc">---</div></div>
+        <div id="vals-grid" class="vals-grid"></div>
+        <div id="chart-container"><canvas id="mainChart"></canvas></div>
+    </div>
+    <script>
+        let myChart = null;
+        async function run(type) {
+            const code = document.getElementById('code').value;
+            const buyPrice = document.getElementById('buy_price').value;
+            const accessCode = document.getElementById('access_code').value;
+            const loading = document.getElementById('loading');
+            const resultArea = document.getElementById('result-area');
+            const chartContainer = document.getElementById('chart-container');
+            
+            if (type !== 'DEMON' && !code) { alert("請輸入股票代碼或名稱！"); return; }
+            loading.style.display = 'block'; resultArea.style.display = 'none';
+            try {
+                const res = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ code: code, type: type, buy_price: buyPrice, access_code: accessCode })
+                });
+                const data = await res.json();
+                if (data.error) { alert(data.error); return; }
+                renderResult(data, type);
+                if (['DEMON', 'FINANCIAL', 'CHIPS'].includes(type) || !data.chart) {
+                    chartContainer.style.display = 'none';
+                } else {
+                    chartContainer.style.display = 'block';
+                    renderChart(data.chart);
+                }
+                resultArea.style.display = 'block';
+            } catch (e) {
+                console.error(e); alert("連線失敗：" + e);
+            } finally { loading.style.display = 'none'; }
+        }
+        function renderResult(data, type) {
+            const info = data.info; const res = data.result;
+            document.getElementById('stock-name').textContent = `${info.name} (${info.code})`;
+            document.getElementById('stock-price').textContent = type === 'DEMON' ? '' : `現價: ${info.price}`;
+            const box = document.getElementById('signal-box');
+            document.getElementById('signal-text').textContent = res.signal;
+            document.getElementById('signal-desc').textContent = res.desc;
+            box.className = 'signal-box'; 
+            const sig = res.signal;
+            if (sig.includes("買") || sig.includes("多") || sig.includes("低估") || sig.includes("A") || sig.includes("B") || sig.includes("強") || sig.includes("成長") || sig.includes("大好")) { box.classList.add('sig-buy'); }
+            else if (sig.includes("賣") || sig.includes("空") || sig.includes("高估") || sig.includes("D") || sig.includes("E") || sig.includes("弱") || sig.includes("衰退") || sig.includes("渙散") || sig.includes("權限不足")) { box.classList.add('sig-sell'); }
+            else { box.classList.add('sig-hold'); }
+            const grid = document.getElementById('vals-grid'); grid.innerHTML = ''; 
+            for (const [key, val] of Object.entries(res.vals)) {
+                let extraClass = ''; let valHtml = val;
+                if (key.includes("操作建議")) { extraClass = 'advice-card'; valHtml = `<span class="advice-text">${val}</span>`; }
+                grid.innerHTML += `<div class="val-card ${extraClass}"><div class="val-label">${key}</div><div class="val-num">${valHtml}</div></div>`;
+            }
+        }
+        function renderChart(chartData) {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            if (myChart) myChart.destroy();
+            const startP = chartData.prices[0]; const endP = chartData.prices[chartData.prices.length - 1];
+            const color = endP >= startP ? '#ff453a' : '#30d158';
+            const bg = endP >= startP ? 'rgba(255, 69, 58, 0.1)' : 'rgba(48, 209, 88, 0.1)';
+            myChart = new Chart(ctx, { type: 'line', data: { labels: chartData.dates, datasets: [{ label: '股價', data: chartData.prices, borderColor: color, backgroundColor: bg, borderWidth: 2, tension: 0.1, fill: true, pointRadius: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { position: 'right', grid: { color: '#333' } } }, interaction: { mode: 'index', intersect: false } } });
+        }
+    </script>
+</body>
+</html>
