@@ -2,143 +2,442 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 全端金融戰情室</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI 金融戰情室 Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-        body { background-color: #121212; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        h1 { color: #bb86fc; margin-bottom: 20px; letter-spacing: 1px; }
-        .auth-bar { width: 100%; max-width: 900px; display: flex; justify-content: flex-end; margin-bottom: 10px; }
-        .auth-input { background-color: #333; border: 1px solid #555; color: #03dac6; padding: 5px 10px; border-radius: 4px; font-size: 14px; width: 180px; text-align: center; }
-        .input-group { background-color: #1e1e1e; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; justify-content: center; flex-wrap: wrap; }
-        .input-wrapper { display: flex; flex-direction: column; align-items: flex-start; }
-        .input-wrapper label { font-size: 0.8em; color: #888; margin-bottom: 5px; }
-        input { background-color: #2c2c2c; border: 1px solid #333; color: white; padding: 10px 15px; border-radius: 5px; font-size: 16px; width: 150px; text-align: center; }
-        .controls-container { max-width: 900px; width: 100%; display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
-        .controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-        .btn { padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; background-color: #3700b3; color: white; flex: 1 1 auto; min-width: 110px; }
-        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
-        .btn-adv { background-color: #03dac6; color: #000; }
-        .btn-gold { background: linear-gradient(to right, #f1c40f, #f39c12); color: #fff; border: 1px solid #f39c12; }
-        .btn-green { background-color: #2e7d32; color: white; border: 1px solid #4caf50; }
-        .btn-purple { background: linear-gradient(to right, #6a1b9a, #4a148c); color: white; border: 1px solid #7b1fa2; }
-        .btn-summary { background: linear-gradient(to right, #6200ea, #b388ff); color: white; flex: 2; }
-        .btn-demon { background: linear-gradient(to right, #2c3e50, #000000); color: #ff453a; border: 1px solid #ff453a; flex: 1; }
-        #result-area { width: 100%; max-width: 900px; background-color: #1e1e1e; border-radius: 10px; padding: 20px; display: none; }
-        .header-info { display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; font-size: 1.2em; color: #aaa; }
-        .signal-box { text-align: center; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #333; background-color: #252525; }
-        .signal-title { font-size: 2.2em; font-weight: bold; margin: 0; }
-        .signal-desc { font-size: 1.1em; opacity: 0.9; margin-top: 10px; }
-        .sig-buy { background-color: rgba(255, 69, 58, 0.15); color: #ff453a; border-color: #ff453a; }
-        .sig-sell { background-color: rgba(48, 209, 88, 0.15); color: #30d158; border-color: #30d158; }
-        .sig-hold { background-color: rgba(255, 214, 10, 0.15); color: #ffd60a; border-color: #ffd60a; }
-        .vals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .val-card { background-color: #2c2c2c; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #333; }
-        .val-label { font-size: 0.9em; color: #888; margin-bottom: 5px; }
-        .val-num { font-size: 1.2em; font-weight: bold; color: #fff; word-break: break-word; }
-        .advice-card { grid-column: 1 / -1; background: rgba(3, 218, 198, 0.1); border: 1px solid #03dac6; }
-        .advice-text { color: #03dac6; font-size: 1.3em; }
-        #chart-container { height: 350px; width: 100%; background-color: #252525; border-radius: 8px; padding: 10px; }
-        #loading { display: none; color: #03dac6; font-size: 1.2em; margin: 20px; text-align: center; }
+        /* --- 1. 全局暗黑風格 --- */
+        body { 
+            background-color: #0d1117; /* 深灰黑背景 */
+            color: #c9d1d9; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; padding: 0; 
+            display: flex; flex-direction: column; align-items: center; 
+            min-height: 100vh;
+        }
+
+        /* 頂部導航 */
+        .navbar {
+            width: 100%; background-color: #161b22; padding: 15px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5); position: sticky; top: 0; z-index: 100; box-sizing: border-box;
+        }
+        .app-title { font-size: 1.2rem; font-weight: bold; color: #58a6ff; display: flex; align-items: center; gap: 10px; }
+
+        /* 輸入區塊 */
+        .search-area {
+            width: 95%; max-width: 600px; margin: 20px 0; display: flex; gap: 10px;
+            background: #21262d; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); box-sizing: border-box;
+        }
+        input { 
+            background: #0d1117; border: 1px solid #30363d; color: #fff; 
+            padding: 12px; border-radius: 8px; font-size: 1rem; width: 100%; outline: none; box-sizing: border-box;
+        }
+        input:focus { border-color: #58a6ff; }
+
+        /* --- 2. 九宮格儀表板 (核心選單) --- */
+        .grid-menu {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+            width: 95%; max-width: 600px; margin-bottom: 20px;
+        }
+        
+        .menu-item {
+            background-color: #21262d; border: 1px solid #30363d; border-radius: 12px;
+            padding: 10px 5px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s; text-align: center; height: 75px;
+        }
+        .menu-item:active { transform: scale(0.95); background-color: #30363d; }
+        .menu-item i { font-size: 1.5rem; margin-bottom: 8px; color: #8b949e; }
+        .menu-item span { font-size: 0.75rem; color: #c9d1d9; font-weight: 500; }
+
+        /* 按鈕顏色分類 */
+        .menu-item.tech i { color: #58a6ff; }      /* 技術 (藍) */
+        .menu-item.tool i { color: #f1c40f; }      /* 工具 (黃) */
+        .menu-item.fund i { color: #a371f7; }      /* 基本 (紫) */
+        .menu-item.ai   i { color: #2ea043; }      /* AI (綠) */
+        .menu-item.demon { background: linear-gradient(135deg, #1f2937, #000); border-color: #ff453a; }
+        .menu-item.demon i { color: #ff453a; }     /* 妖股 (紅) */
+        
+        /* 管理員匯出按鈕 */
+        .menu-item.admin-export { background: #30363d; border-color: #8b949e; }
+        .menu-item.admin-export i { color: #fff; }
+
+        /* ★ 隱藏專用 class */
+        .admin-hidden { display: none !important; }
+
+        /* --- 3. 結果展示卡片 --- */
+        #result-area { width: 95%; max-width: 600px; display: none; padding-bottom: 50px; }
+        
+        .card { background: #161b22; border-radius: 12px; padding: 20px; margin-bottom: 15px; border: 1px solid #30363d; position: relative; }
+        
+        /* 股票頭部資訊 */
+        .stock-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 15px; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+        .stock-name { font-size: 1.1rem; color: #8b949e; }
+        .price-tag { font-size: 1.8rem; font-weight: bold; color: #fff; }
+
+        /* --- 4. 特效：評分圓環 --- */
+        .score-container { display: flex; justify-content: center; align-items: center; margin-bottom: 20px; }
+        .score-circle {
+            width: 100px; height: 100px; border-radius: 50%;
+            background: conic-gradient(#f39c12 0% 0%, #30363d 0% 100%);
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+        .score-inner {
+            width: 85px; height: 85px; background: #161b22; border-radius: 50%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .score-num { font-size: 2rem; font-weight: bold; color: #f39c12; }
+        .score-label { font-size: 0.8rem; color: #8b949e; margin-top: -5px; }
+
+        /* 訊號燈方塊 */
+        .signal-box { padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; border: 1px solid; }
+        .sig-buy { background: rgba(46, 160, 67, 0.15); border-color: #2ea043; color: #3fb950; }
+        .sig-sell { background: rgba(218, 54, 51, 0.15); border-color: #da3633; color: #f85149; }
+        .sig-hold { background: rgba(210, 153, 34, 0.15); border-color: #d29922; color: #e3b341; }
+        #signal-text { font-size: 1.5rem; font-weight: bold; }
+        #signal-desc { margin-top: 5px; opacity: 0.8; font-size: 0.9rem; }
+
+        /* --- 5. 特效：支撐壓力條 --- */
+        .sr-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+        .sr-row { 
+            display: flex; align-items: center; justify-content: space-between;
+            background: #0d1117; padding: 12px; border-radius: 8px; position: relative; overflow: hidden;
+        }
+        .sr-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; }
+        .sr-bar.red { background-color: #ff453a; box-shadow: 2px 0 10px rgba(255, 69, 58, 0.3); }
+        .sr-bar.green { background-color: #3fb950; box-shadow: 2px 0 10px rgba(63, 185, 80, 0.3); }
+        .sr-left { display: flex; align-items: center; gap: 10px; margin-left: 10px; }
+        .sr-price { font-size: 1.3rem; font-weight: bold; width: 90px; color: #e6edf3; }
+        .sr-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; color: #0d1117; }
+        .sr-badge.red { background-color: #ff453a; }
+        .sr-badge.green { background-color: #3fb950; }
+        .sr-right { text-align: right; }
+        .sr-gap { font-size: 0.9rem; font-weight: bold; }
+        .sr-source { font-size: 0.75rem; color: #8b949e; margin-top: 2px; }
+
+        /* 一般網格 */
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .data-item { background: #0d1117; padding: 10px; border-radius: 6px; text-align: center; }
+        .data-label { font-size: 0.75rem; color: #8b949e; margin-bottom: 4px; }
+        .data-val { font-size: 1rem; font-weight: bold; color: #e6edf3; }
+
+        /* 免責聲明 Footer */
+        .footer-disclaimer {
+            margin-top: auto; padding: 20px; text-align: center; font-size: 0.75rem; color: #484f58; width: 90%; max-width: 600px; border-top: 1px solid #21262d;
+        }
+
+        #loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: #58a6ff; padding: 20px 40px; border-radius: 12px; z-index: 999; font-size: 1.2rem; backdrop-filter: blur(5px); }
+
     </style>
 </head>
 <body>
-    <h1>🚀 AI 全端金融戰情室</h1>
-    <div class="auth-bar"><input type="text" id="access_code" class="auth-input" placeholder="🔑 會員通行碼 (選填)"></div>
-    <div class="input-group">
-        <div class="input-wrapper"><label>股票代碼 / 中文名稱</label><input type="text" id="code" placeholder="如: 2330 / 台積電" value="2330"></div>
-        <div class="input-wrapper"><label>您的買進成本 (選填)</label><input type="number" id="buy_price" placeholder="例如: 800"></div>
+
+    <div class="navbar">
+        <div class="app-title"><i class="fa-solid fa-robot"></i> AI 金融戰情室</div>
+        <input type="text" id="access_code" placeholder="🔑 通行碼" style="width: 100px; padding: 8px; text-align: center;">
     </div>
-    <div class="controls-container">
-        <div class="controls">
-            <button class="btn" onclick="run('MA')">MA 均線</button>
-            <button class="btn" onclick="run('KD')">KD 指標</button>
-            <button class="btn" onclick="run('RSI')">RSI 強弱</button>
-            <button class="btn" onclick="run('MACD')">MACD 動能</button>
-            <button class="btn" onclick="run('BOX')">箱型理論</button>
-            <button class="btn" onclick="run('REG')">回歸通道</button>
+
+    <div class="search-area">
+        <div style="flex: 1;"><input type="text" id="code" placeholder="代碼 (如: 2330)" value="2330"></div>
+        <div style="flex: 1;"><input type="number" id="buy_price" placeholder="成本 (選填)"></div>
+    </div>
+
+    <div class="grid-menu">
+        <div class="menu-item tech" onclick="run('MA')"><i class="fa-solid fa-chart-line"></i><span>均線 MA</span></div>
+        <div class="menu-item tech" onclick="run('KD')"><i class="fa-solid fa-water"></i><span>KD 指標</span></div>
+        <div class="menu-item tech" onclick="run('MACD')"><i class="fa-solid fa-chart-simple"></i><span>MACD</span></div>
+        <div class="menu-item tech" onclick="run('RSI')"><i class="fa-solid fa-bolt"></i><span>RSI</span></div>
+
+        <div class="menu-item tool" onclick="run('SR')"><i class="fa-solid fa-layer-group"></i><span>支撐壓力</span></div>
+        <div class="menu-item tool" onclick="run('FIB')"><i class="fa-solid fa-ruler-vertical"></i><span>斐波那契</span></div>
+        <div class="menu-item tool" onclick="run('GAP')"><i class="fa-solid fa-arrows-up-down"></i><span>缺口分析</span></div>
+        <div class="menu-item tool" onclick="run('PATTERN')"><i class="fa-solid fa-shapes"></i><span>型態辨識</span></div>
+
+        <div class="menu-item tool" onclick="run('BOX')"><i class="fa-regular fa-square"></i><span>箱型理論</span></div>
+        <div class="menu-item tool" onclick="run('REG')"><i class="fa-solid fa-road"></i><span>回歸通道</span></div>
+        <div class="menu-item tool" onclick="run('VALUE')"><i class="fa-solid fa-scale-balanced"></i><span>價值估算</span></div>
+        <div class="menu-item fund" onclick="run('CHIPS')"><i class="fa-solid fa-users-viewfinder"></i><span>籌碼分析</span></div>
+        
+        <div class="menu-item fund" onclick="run('FINANCIAL')"><i class="fa-solid fa-file-invoice-dollar"></i><span>財報營收</span></div>
+        <div class="menu-item ai" onclick="run('SUMMARY')" style="grid-column: span 3; background: linear-gradient(90deg, #161b22, #21262d);">
+            <i class="fa-solid fa-microchip"></i><span>AI 綜合健檢診斷</span>
         </div>
-        <div class="controls">
-            <button class="btn btn-gold" onclick="run('VALUE')">💎 價值分析</button>
-            <button class="btn btn-green" onclick="run('FINANCIAL')">📊 財報趨勢</button>
-            <button class="btn btn-purple" onclick="run('CHIPS')">🏯 籌碼分析</button>
+
+        <div class="menu-item demon admin-hidden" onclick="run('DEMON')" style="grid-column: span 2; margin-top: 5px;">
+            <i class="fa-solid fa-ghost"></i><span>妖股獵手 (Admin)</span>
         </div>
-        <div class="controls">
-            <span style="color: #888; align-self: center; margin-right: 5px; font-size: 0.9em;">進階組合：</span>
-            <button class="btn btn-adv" onclick="run('KDRSI')">KD + RSI</button>
-            <button class="btn btn-adv" onclick="run('MAKD')">MA + MACD</button>
-            <button class="btn btn-adv" onclick="run('MACDRSI')">MACD + RSI</button>
-        </div>
-        <div class="controls" style="display: flex; gap: 10px;">
-            <button class="btn btn-summary" onclick="run('SUMMARY')">🤖 AI 綜合診斷 (多空總結)</button>
-            <button class="btn btn-demon" onclick="run('DEMON')">🕵️‍♂️ 妖股獵手 (Admin Only)</button>
+        <div class="menu-item admin-export admin-hidden" onclick="exportData()" style="grid-column: span 2; margin-top: 5px;">
+            <i class="fa-solid fa-file-csv"></i><span>匯出流量報表</span>
         </div>
     </div>
-    <div id="loading">AI 運算中心連線中...</div>
+
+    <div id="loading"><i class="fa-solid fa-circle-notch fa-spin"></i> AI 運算中...</div>
+
     <div id="result-area">
-        <div class="header-info"><span id="stock-name">---</span><span id="stock-price">現價: ---</span></div>
-        <div id="signal-box" class="signal-box sig-hold"><div id="signal-text" class="signal-title">---</div><div id="signal-desc" class="signal-desc">---</div></div>
-        <div id="vals-grid" class="vals-grid"></div>
-        <div id="chart-container"><canvas id="mainChart"></canvas></div>
+        <div class="card">
+            <div class="stock-header">
+                <span id="stock-name" class="stock-name">---</span>
+                <span id="stock-price" class="price-tag">---</span>
+            </div>
+            
+            <div id="score-card" class="score-container" style="display: none;">
+                <div class="score-circle" id="score-circle-bg">
+                    <div class="score-inner">
+                        <div class="score-num" id="score-val">0</div>
+                        <div class="score-label">AI 評分</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="signal-box" class="signal-box sig-hold">
+                <div id="signal-text">---</div>
+                <div id="signal-desc">---</div>
+            </div>
+
+            <div id="vals-grid" class="data-grid"></div>
+            
+            <div id="sr-container" class="sr-list" style="display: none;"></div>
+        </div>
+
+        <div class="card" id="chart-card">
+            <canvas id="mainChart" style="height: 250px;"></canvas>
+        </div>
     </div>
+
+    <div class="footer-disclaimer">
+        本服務僅為 AI 技術研究與測試用途，分析結果僅供參考，不構成任何投資建議。<br>
+        使用者應自行評估風險，本站不承擔任何盈虧責任。
+    </div>
+
     <script>
         let myChart = null;
+
+        const ADMIN_KEYS = ["RAY_ADMIN_888", "BOSS_001"]; 
+        document.getElementById('access_code').addEventListener('input', function(e) {
+            const inputVal = e.target.value.trim();
+            const adminBtns = document.querySelectorAll('.admin-hidden');
+            if (ADMIN_KEYS.includes(inputVal)) {
+                adminBtns.forEach(btn => {
+                    btn.classList.remove('admin-hidden');
+                    btn.style.display = 'flex';
+                });
+            } else {
+                adminBtns.forEach(btn => {
+                    btn.classList.add('admin-hidden');
+                    btn.style.display = 'none';
+                });
+            }
+        });
+
+        async function exportData() {
+            const accessCode = document.getElementById('access_code').value;
+            if (!accessCode) { alert("請輸入管理員通行碼！"); return; }
+            try {
+                const res = await fetch('/api/admin/export', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ access_code: accessCode })
+                });
+                if (res.status === 403) { alert("⛔ 權限不足！"); return; }
+                if (!res.ok) { alert("匯出失敗"); return; }
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Traffic_Report_${new Date().toISOString().slice(0,10)}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                alert("✅ 報表下載成功！");
+            } catch (e) { alert("連線錯誤: " + e); }
+        }
+
         async function run(type) {
             const code = document.getElementById('code').value;
             const buyPrice = document.getElementById('buy_price').value;
             const accessCode = document.getElementById('access_code').value;
-            const loading = document.getElementById('loading');
-            const resultArea = document.getElementById('result-area');
-            const chartContainer = document.getElementById('chart-container');
             
-            if (type !== 'DEMON' && !code) { alert("請輸入股票代碼或名稱！"); return; }
-            loading.style.display = 'block'; resultArea.style.display = 'none';
+            if (type !== 'DEMON' && !code) { alert("請輸入股票代碼！"); return; }
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result-area').style.display = 'none';
+
             try {
                 const res = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ code: code, type: type, buy_price: buyPrice, access_code: accessCode })
+                    body: JSON.stringify({ code, type, buy_price: buyPrice, access_code: accessCode })
                 });
+
                 const data = await res.json();
                 if (data.error) { alert(data.error); return; }
-                renderResult(data, type);
-                if (['DEMON', 'FINANCIAL', 'CHIPS'].includes(type) || !data.chart) {
-                    chartContainer.style.display = 'none';
-                } else {
-                    chartContainer.style.display = 'block';
-                    renderChart(data.chart);
-                }
-                resultArea.style.display = 'block';
+
+                renderUI(data, type);
+
             } catch (e) {
-                console.error(e); alert("連線失敗：" + e);
-            } finally { loading.style.display = 'none'; }
+                alert("連線錯誤: " + e);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
         }
-        function renderResult(data, type) {
-            const info = data.info; const res = data.result;
+
+        function renderUI(data, type) {
+            const info = data.info;
+            const res = data.result;
+
             document.getElementById('stock-name').textContent = `${info.name} (${info.code})`;
-            document.getElementById('stock-price').textContent = type === 'DEMON' ? '' : `現價: ${info.price}`;
+            document.getElementById('stock-price').textContent = info.price;
+            document.getElementById('result-area').style.display = 'block';
+
             const box = document.getElementById('signal-box');
             document.getElementById('signal-text').textContent = res.signal;
             document.getElementById('signal-desc').textContent = res.desc;
-            box.className = 'signal-box'; 
+            box.className = 'signal-box';
+            
             const sig = res.signal;
-            if (sig.includes("買") || sig.includes("多") || sig.includes("低估") || sig.includes("A") || sig.includes("B") || sig.includes("強") || sig.includes("成長") || sig.includes("大好")) { box.classList.add('sig-buy'); }
-            else if (sig.includes("賣") || sig.includes("空") || sig.includes("高估") || sig.includes("D") || sig.includes("E") || sig.includes("弱") || sig.includes("衰退") || sig.includes("渙散") || sig.includes("權限不足")) { box.classList.add('sig-sell'); }
-            else { box.classList.add('sig-hold'); }
-            const grid = document.getElementById('vals-grid'); grid.innerHTML = ''; 
-            for (const [key, val] of Object.entries(res.vals)) {
-                let extraClass = ''; let valHtml = val;
-                if (key.includes("操作建議")) { extraClass = 'advice-card'; valHtml = `<span class="advice-text">${val}</span>`; }
-                grid.innerHTML += `<div class="val-card ${extraClass}"><div class="val-label">${key}</div><div class="val-num">${valHtml}</div></div>`;
+            if (sig.includes('買') || sig.includes('多') || sig.includes('強') || sig.includes('A') || sig.includes('向上') || sig.includes('挑戰壓力')) {
+                box.classList.add('sig-buy');
+            } else if (sig.includes('賣') || sig.includes('空') || sig.includes('弱') || sig.includes('D') || sig.includes('向下') || sig.includes('回測支撐')) {
+                box.classList.add('sig-sell');
+            } else {
+                box.classList.add('sig-hold');
+            }
+
+            const srContainer = document.getElementById('sr-container');
+            const valsGrid = document.getElementById('vals-grid');
+            const scoreCard = document.getElementById('score-card');
+            
+            srContainer.style.display = 'none';
+            valsGrid.style.display = 'grid';
+            scoreCard.style.display = 'none';
+
+            if (type === 'SR') {
+                valsGrid.style.display = 'none';
+                srContainer.style.display = 'flex';
+                srContainer.innerHTML = '';
+                
+                for (const [k, v] of Object.entries(res.vals)) {
+                    if (k === '現價') continue;
+                    
+                    const valStr = String(v);
+
+                    if (valStr.includes('|')) {
+                        const parts = valStr.split('|');
+                        const price = parts[0];
+                        const typeStr = parts[1];
+                        const gap = parts[2];
+                        const source = parts[3];
+                        
+                        const isRes = typeStr === '壓力';
+                        const colorClass = isRes ? 'red' : 'green';
+                        const gapColor = gap.includes('+') ? '#ff453a' : '#3fb950';
+
+                        srContainer.innerHTML += `
+                            <div class="sr-row">
+                                <div class="sr-bar ${colorClass}"></div>
+                                <div class="sr-left">
+                                    <div class="sr-price" style="color:${isRes ? '#ff453a' : '#3fb950'}">${price}</div>
+                                    <div class="sr-badge ${colorClass}">${typeStr}</div>
+                                </div>
+                                <div class="sr-right">
+                                    <div class="sr-gap" style="color:${gapColor}">${gap}</div>
+                                    <div class="sr-source">${source}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    else {
+                        if (k.includes('---')) continue; 
+                        let colorStyle = '#c9d1d9';
+                        if (valStr.includes('+') || valStr.includes('獲利')) colorStyle = '#ff453a';
+                        if (valStr.includes('-') || valStr.includes('賠') || valStr.includes('損')) colorStyle = '#3fb950';
+
+                        srContainer.innerHTML += `
+                            <div class="sr-row" style="background: #1c2128; border: 1px dashed #30363d; min-height: 40px;">
+                                <div class="sr-left" style="margin-left: 10px;">
+                                    <div class="sr-source" style="font-size: 0.95rem; color: #8b949e;">${k}</div>
+                                </div>
+                                <div class="sr-right" style="margin-right: 10px;">
+                                    <div class="sr-gap" style="color: ${colorStyle}; font-size: 1.1rem;">${valStr}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            } 
+            else {
+                valsGrid.innerHTML = '';
+                for (const [k, v] of Object.entries(res.vals)) {
+                    if (k.includes('總分') || k.includes('評分')) {
+                        const score = parseInt(String(v).replace(/[^0-9]/g, '')) || 0;
+                        showScoreCircle(score);
+                        continue;
+                    }
+
+                    let colorClass = '';
+                    const vStr = String(v);
+                    if(vStr.includes('+') || vStr.includes('買') || vStr.includes('向上')) colorClass = 'color: #ff453a;';
+                    if(vStr.includes('-') || vStr.includes('賣') || vStr.includes('向下')) colorClass = 'color: #3fb950;';
+                    
+                    valsGrid.innerHTML += `
+                        <div class="data-item">
+                            <div class="data-label">${k}</div>
+                            <div class="data-val" style="${colorClass}">${v}</div>
+                        </div>`;
+                }
+            }
+
+            const chartCard = document.getElementById('chart-card');
+            const noChartTypes = ['FINANCIAL', 'CHIPS', 'FIB', 'DEMON', 'SR', 'GAP', 'PATTERN'];
+            
+            if (noChartTypes.includes(type) || !data.chart) {
+                chartCard.style.display = 'none';
+            } else {
+                chartCard.style.display = 'block';
+                renderChart(data.chart);
             }
         }
+
+        function showScoreCircle(score) {
+            const container = document.getElementById('score-card');
+            const bg = document.getElementById('score-circle-bg');
+            const val = document.getElementById('score-val');
+            container.style.display = 'flex';
+            val.textContent = score;
+            let color = '#f39c12';
+            if (score >= 80) color = '#ff453a';
+            if (score < 50) color = '#3fb950';
+            val.style.color = color;
+            bg.style.background = `conic-gradient(${color} 0% ${score}%, #30363d ${score}% 100%)`;
+        }
+
         function renderChart(chartData) {
             const ctx = document.getElementById('mainChart').getContext('2d');
             if (myChart) myChart.destroy();
-            const startP = chartData.prices[0]; const endP = chartData.prices[chartData.prices.length - 1];
-            const color = endP >= startP ? '#ff453a' : '#30d158';
-            const bg = endP >= startP ? 'rgba(255, 69, 58, 0.1)' : 'rgba(48, 209, 88, 0.1)';
-            myChart = new Chart(ctx, { type: 'line', data: { labels: chartData.dates, datasets: [{ label: '股價', data: chartData.prices, borderColor: color, backgroundColor: bg, borderWidth: 2, tension: 0.1, fill: true, pointRadius: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { position: 'right', grid: { color: '#333' } } }, interaction: { mode: 'index', intersect: false } } });
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(88, 166, 255, 0.4)');
+            gradient.addColorStop(1, 'rgba(88, 166, 255, 0)');
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.dates,
+                    datasets: [{
+                        label: '股價', data: chartData.prices,
+                        borderColor: '#58a6ff', backgroundColor: gradient,
+                        borderWidth: 2, fill: true, pointRadius: 0, tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { display: false }, y: { position: 'right', grid: { color: '#30363d' }, ticks: { color: '#8b949e' } } },
+                    interaction: { mode: 'index', intersect: false }
+                }
+            });
         }
     </script>
 </body>
