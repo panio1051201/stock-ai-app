@@ -529,8 +529,13 @@
         <div class="menu-item demon admin-hidden" onclick="run('DEMON')" style="grid-column: span 2; margin-top: 5px;">
             <i class="fa-solid fa-ghost"></i><span>妖股獵手 (Admin)</span>
         </div>
+        <div class="menu-item demon admin-hidden" onclick="run('FOREIGN_BUY')"
+            style="grid-column: span 2; margin-top: 5px; background: linear-gradient(135deg, #1f2937, #0f172a); border-color: #3b82f6;">
+            <i class="fa-solid fa-money-bill-trend-up" style="color: #3b82f6;"></i><span style="color: #bfdbfe;">外資月線突破
+                (Admin)</span>
+        </div>
         <div class="menu-item admin-export admin-hidden" onclick="exportData()"
-            style="grid-column: span 2; margin-top: 5px;">
+            style="grid-column: span 4; margin-top: 5px;">
             <i class="fa-solid fa-file-csv"></i><span>匯出流量報表</span>
         </div>
     </div>
@@ -640,7 +645,7 @@
 
         window.onload = loadWatchlist;
 
-        const ADMIN_KEYS = ["RAY_ADMIN_888", "BOSS_001"];
+        const ADMIN_KEYS = ["Ray Cheng"];
         document.getElementById('access_code').addEventListener('input', function (e) {
             const inputVal = e.target.value.trim();
             const adminBtns = document.querySelectorAll('.admin-hidden');
@@ -875,6 +880,7 @@
             const startDate = startDateObj.toISOString().split('T')[0];
 
             const payload = {
+                access_code: document.getElementById('access_code') ? document.getElementById('access_code').value : '',
                 symbol: String(symbol).trim(),
                 start_date: startDate,
                 end_date: endDate,

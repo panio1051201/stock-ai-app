@@ -19,7 +19,7 @@ sys.path.append(os.getcwd())
 # 1. 引入所有策略模組
 # ==========================================
 from strategies.basic import ma, kd, rsi, macd, box, regression, value, financial, chips, fibonacci, support_resistance, gap, pattern, bollinger
-from strategies.advanced import kd_rsi, ma_macd, macd_rsi, summary, find_demon
+from strategies.advanced import kd_rsi, ma_macd, macd_rsi, summary, find_demon, find_foreign_buy
 
 app = Flask(__name__)
 CORS(app)
@@ -27,11 +27,12 @@ CORS(app)
 # ==========================================
 # 2. 全局設定
 # ==========================================
-ADMIN_KEYS = ["RAY_ADMIN_888", "BOSS_001"]
-VIP_KEYS = ["VIP_USER_001", "FRIEND_JOY", "2026_PRO", "VIP_TEST"]
+ADMIN_KEYS = ["Ray Cheng"]
+VIP_KEYS = ["MEMBER", "VIP_USER"]
 
-# 免費額度: 25 次 / 1 小時
-LIMIT_COUNT = 25
+# 免費與會員額度: 訪客 25次/時，會員 50次/時
+LIMIT_COUNT_GUEST = 25
+LIMIT_COUNT_MEMBER = 50
 LIMIT_HOURS = 1
 
 # 資料庫
@@ -46,7 +47,7 @@ STRATEGIES = {
     'FIB': fibonacci, 'SR': support_resistance,
     'GAP': gap, 'PATTERN': pattern, 'BOLLINGER': bollinger,
     'KDRSI': kd_rsi, 'MAKD': ma_macd, 'MACDRSI': macd_rsi, 
-    'SUMMARY': summary, 'DEMON': find_demon
+    'SUMMARY': summary, 'DEMON': find_demon, 'FOREIGN_BUY': find_foreign_buy
 }
 
 # ==========================================
@@ -109,10 +110,12 @@ def check_permission(ip, access_code, st_type):
     is_admin = code_input in ADMIN_KEYS
     is_vip = code_input in VIP_KEYS
     
-    if st_type == 'DEMON':
-        return (True, "") if is_admin else (False, "⛔ 權限不足：此功能僅限核心管理員使用。")
+    # 專屬進階功能限制
+    if st_type in ['DEMON', 'FOREIGN_BUY', 'RETROLYZE']:
+        if not is_admin:
+            return False, "⛔ 權限不足：此進階功能 (包含全市場掃描與 AI 歷史回測) 僅限管理者 (Ray Cheng) 專用的喔！"
 
-    if is_admin or is_vip: return True, ""
+    if is_admin: return True, ""
     
     # 訪客限制
     if len(USAGE_DB) > 1000:
@@ -127,9 +130,13 @@ def check_permission(ip, access_code, st_type):
             USAGE_DB[ip] = {'reset_time': now + timedelta(hours=LIMIT_HOURS), 'count': 0}
             
     record = USAGE_DB[ip]
-    if record['count'] >= LIMIT_COUNT:
-        return False, f"⚠️ 免費額度 ({LIMIT_COUNT}次/時) 已用完！請於 {record['reset_time'].strftime('%H:%M')} 後再來。"
+    limit = LIMIT_COUNT_MEMBER if is_vip else LIMIT_COUNT_GUEST
     
+    if record['count'] >= limit:
+        role_str = "一般會員" if is_vip else "訪客"
+        return False, f"⚠️ {role_str}額度 ({limit}次/時) 已用完！請於 {record['reset_time'].strftime('%H:%M')} 後再來。"
+    
+    USAGE_DB[ip]['count'] += 1
     return True, ""
 
 # ==========================================
@@ -173,9 +180,6 @@ def analyze_single():
 
     passed, msg = check_permission(user_ip, access_code, st_type)
     if not passed: return jsonify({'error': msg})
-
-    if access_code not in ADMIN_KEYS and access_code not in VIP_KEYS:
-        USAGE_DB[user_ip]['count'] += 1
 
     if st_type != 'DEMON' and not code: 
         return jsonify({'error': '請輸入股票代碼'})
@@ -298,6 +302,14 @@ import backtest_engine
 def proxy_retrolyze():
     try:
         req_data = request.json
+        access_code = req_data.get('access_code', '')
+        
+        # 權限檢查 (僅 Admin 可用回測)
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0]
+        is_ok, msg = check_permission(client_ip, access_code, 'RETROLYZE')
+        if not is_ok:
+            return jsonify({'error': msg}), 403
+            
         symbol = req_data.get('symbol')
         start_date_str = req_data.get('start_date')
         end_date_str = req_data.get('end_date')
