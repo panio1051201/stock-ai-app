@@ -292,26 +292,48 @@ def analyze_single():
         
     return jsonify(response)
 
+import backtest_engine
+
 @app.route('/api/proxy/retrolyze', methods=['POST'])
 def proxy_retrolyze():
     try:
         req_data = request.json
-        req = urllib.request.Request(
-            'https://retrolyze.3mi.tw/api/backtest/compare',
-            data=json.dumps(req_data).encode('utf-8'),
-            headers={
-                'Content-Type': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            }
-        )
-        with urllib.request.urlopen(req) as res:
-            response_data = json.loads(res.read().decode('utf-8'))
-            return jsonify(response_data)
-    except urllib.error.HTTPError as e:
-        err_msg = e.read().decode('utf-8') if e.fp else str(e)
-        return jsonify({'error': f"HTTPError {e.code}: {err_msg}"}), e.code
+        symbol = req_data.get('symbol')
+        start_date_str = req_data.get('start_date')
+        end_date_str = req_data.get('end_date')
+        initial_capital = req_data.get('initial_capital', 100000)
+        dca_freq = req_data.get('dca_frequency', 'monthly')
+        strategy = req_data.get('strategy', 'MA')
+        
+        # 計算天數 (抓得比 start_date 更早一點，以免 MA20 等指標算不出來)
+        start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d')
+        end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d')
+        days = (datetime.datetime.now() - start_date).days + 100 # 多抓 100 天讓技術指標暖機
+        
+        # 抓取股價 (借用現有的 fetch_data，雖然有 cache 但無妨)
+        name, full_code = data_loader.get_stock_name(symbol)
+        df, _ = data_loader.fetch_data(full_code, days=days)
+        
+        if df.empty:
+             return jsonify({'error': '找不到該股票資料'}), 404
+             
+        # 切割日期，技術指標暖機用之前的日期，但回測金流從 start_date 開始計算？
+        # backtest_engine 裡面是算完指標後直接過濾時間跑金流為佳，或是傳進引擎再去截斷
+        # 這裡為了簡單，我們直接切日期餵給回測？ 不行，因為算均線需要前面的資料
+        # backtest_engine_py 現有邏輯是：在整個 df 上跑迴圈。若有初始長度影響，我們應在引擎裡面加一個 start_date 過濾
+        # 但既然原本的 payload 帶過來，我們現在就將整個過濾後的 dataframe (計算完技術指標) 餵給他，或直接讓它在整段期間跑
+        # 稍作折衷：切出指定時間範圍的 df 交給 backtest_engine 因為原本的引擎不吃 start_date
+        
+        # 先計算所有指標
+        df_range = df.loc[start_date_str:end_date_str]
+        if df_range.empty: return jsonify({'error': '該時段內沒有歷史資料'}), 404
+        
+        result = backtest_engine.run_backtest(df_range, initial_capital, strategy, dca_freq)
+        
+        return jsonify(result)
+        
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+         return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':
