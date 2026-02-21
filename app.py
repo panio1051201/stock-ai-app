@@ -132,6 +132,10 @@ def check_permission(ip, access_code, st_type):
 def index():
     return render_template('index.html')
 
+@app.route('/retrolyze')
+def retrolyze():
+    return render_template('retrolyze.html')
+
 @app.route('/api/admin/export', methods=['POST'])
 def export_stats():
     data = request.json

@@ -1,143 +1,432 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AI 金融戰情室 Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <style>
         /* --- 1. 全局暗黑風格 --- */
-        body { 
-            background-color: #0d1117; /* 深灰黑背景 */
-            color: #c9d1d9; 
+        body {
+            background-color: #0d1117;
+            /* 深灰黑背景 */
+            color: #c9d1d9;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0; padding: 0; 
-            display: flex; flex-direction: column; align-items: center; 
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             min-height: 100vh;
         }
 
         /* 頂部導航 */
         .navbar {
-            width: 100%; background-color: #161b22; padding: 15px 20px;
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5); position: sticky; top: 0; z-index: 100; box-sizing: border-box;
+            width: 100%;
+            background-color: #161b22;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-sizing: border-box;
         }
-        .app-title { font-size: 1.2rem; font-weight: bold; color: #58a6ff; display: flex; align-items: center; gap: 10px; }
+
+        .app-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #58a6ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
         /* 輸入區塊 */
         .search-area {
-            width: 95%; max-width: 600px; margin: 20px 0; display: flex; gap: 10px;
-            background: #21262d; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); box-sizing: border-box;
+            width: 95%;
+            max-width: 600px;
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            background: #21262d;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            box-sizing: border-box;
         }
-        input { 
-            background: #0d1117; border: 1px solid #30363d; color: #fff; 
-            padding: 12px; border-radius: 8px; font-size: 1rem; width: 100%; outline: none; box-sizing: border-box;
+
+        input {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            width: 100%;
+            outline: none;
+            box-sizing: border-box;
         }
-        input:focus { border-color: #58a6ff; }
+
+        input:focus {
+            border-color: #58a6ff;
+        }
 
         /* --- 2. 九宮格儀表板 (核心選單) --- */
         .grid-menu {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
-            width: 95%; max-width: 600px; margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            width: 95%;
+            max-width: 600px;
+            margin-bottom: 20px;
         }
-        
+
         .menu-item {
-            background-color: #21262d; border: 1px solid #30363d; border-radius: 12px;
-            padding: 10px 5px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            cursor: pointer; transition: all 0.2s; text-align: center; height: 75px;
+            background-color: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 10px 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            height: 75px;
         }
-        .menu-item:active { transform: scale(0.95); background-color: #30363d; }
-        .menu-item i { font-size: 1.5rem; margin-bottom: 8px; color: #8b949e; }
-        .menu-item span { font-size: 0.75rem; color: #c9d1d9; font-weight: 500; }
+
+        .menu-item:active {
+            transform: scale(0.95);
+            background-color: #30363d;
+        }
+
+        .menu-item i {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            color: #8b949e;
+        }
+
+        .menu-item span {
+            font-size: 0.75rem;
+            color: #c9d1d9;
+            font-weight: 500;
+        }
 
         /* 按鈕顏色分類 */
-        .menu-item.tech i { color: #58a6ff; }      /* 技術 (藍) */
-        .menu-item.tool i { color: #f1c40f; }      /* 工具 (黃) */
-        .menu-item.fund i { color: #a371f7; }      /* 基本 (紫) */
-        .menu-item.ai   i { color: #2ea043; }      /* AI (綠) */
-        .menu-item.demon { background: linear-gradient(135deg, #1f2937, #000); border-color: #ff453a; }
-        .menu-item.demon i { color: #ff453a; }     /* 妖股 (紅) */
-        
+        .menu-item.tech i {
+            color: #58a6ff;
+        }
+
+        /* 技術 (藍) */
+        .menu-item.tool i {
+            color: #f1c40f;
+        }
+
+        /* 工具 (黃) */
+        .menu-item.fund i {
+            color: #a371f7;
+        }
+
+        /* 基本 (紫) */
+        .menu-item.ai i {
+            color: #2ea043;
+        }
+
+        /* AI (綠) */
+        .menu-item.demon {
+            background: linear-gradient(135deg, #1f2937, #000);
+            border-color: #ff453a;
+        }
+
+        .menu-item.demon i {
+            color: #ff453a;
+        }
+
+        /* 妖股 (紅) */
+
         /* 管理員匯出按鈕 */
-        .menu-item.admin-export { background: #30363d; border-color: #8b949e; }
-        .menu-item.admin-export i { color: #fff; }
+        .menu-item.admin-export {
+            background: #30363d;
+            border-color: #8b949e;
+        }
+
+        .menu-item.admin-export i {
+            color: #fff;
+        }
 
         /* ★ 隱藏專用 class */
-        .admin-hidden { display: none !important; }
+        .admin-hidden {
+            display: none !important;
+        }
 
         /* --- 3. 結果展示卡片 --- */
-        #result-area { width: 95%; max-width: 600px; display: none; padding-bottom: 50px; }
-        
-        .card { background: #161b22; border-radius: 12px; padding: 20px; margin-bottom: 15px; border: 1px solid #30363d; position: relative; }
-        
+        #result-area {
+            width: 95%;
+            max-width: 600px;
+            display: none;
+            padding-bottom: 50px;
+        }
+
+        .card {
+            background: #161b22;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid #30363d;
+            position: relative;
+        }
+
         /* 股票頭部資訊 */
-        .stock-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 15px; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
-        .stock-name { font-size: 1.1rem; color: #8b949e; }
-        .price-tag { font-size: 1.8rem; font-weight: bold; color: #fff; }
+        .stock-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 10px;
+        }
+
+        .stock-name {
+            font-size: 1.1rem;
+            color: #8b949e;
+        }
+
+        .price-tag {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #fff;
+        }
 
         /* --- 4. 特效：評分圓環 --- */
-        .score-container { display: flex; justify-content: center; align-items: center; margin-bottom: 20px; }
+        .score-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
         .score-circle {
-            width: 100px; height: 100px; border-radius: 50%;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
             background: conic-gradient(#f39c12 0% 0%, #30363d 0% 100%);
-            display: flex; justify-content: center; align-items: center;
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
         }
+
         .score-inner {
-            width: 85px; height: 85px; background: #161b22; border-radius: 50%;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            width: 85px;
+            height: 85px;
+            background: #161b22;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
-        .score-num { font-size: 2rem; font-weight: bold; color: #f39c12; }
-        .score-label { font-size: 0.8rem; color: #8b949e; margin-top: -5px; }
+
+        .score-num {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #f39c12;
+        }
+
+        .score-label {
+            font-size: 0.8rem;
+            color: #8b949e;
+            margin-top: -5px;
+        }
 
         /* 訊號燈方塊 */
-        .signal-box { padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; border: 1px solid; }
-        .sig-buy { background: rgba(46, 160, 67, 0.15); border-color: #2ea043; color: #3fb950; }
-        .sig-sell { background: rgba(218, 54, 51, 0.15); border-color: #da3633; color: #f85149; }
-        .sig-hold { background: rgba(210, 153, 34, 0.15); border-color: #d29922; color: #e3b341; }
-        #signal-text { font-size: 1.5rem; font-weight: bold; }
-        #signal-desc { margin-top: 5px; opacity: 0.8; font-size: 0.9rem; }
+        .signal-box {
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 15px;
+            border: 1px solid;
+        }
+
+        .sig-buy {
+            background: rgba(46, 160, 67, 0.15);
+            border-color: #2ea043;
+            color: #3fb950;
+        }
+
+        .sig-sell {
+            background: rgba(218, 54, 51, 0.15);
+            border-color: #da3633;
+            color: #f85149;
+        }
+
+        .sig-hold {
+            background: rgba(210, 153, 34, 0.15);
+            border-color: #d29922;
+            color: #e3b341;
+        }
+
+        #signal-text {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        #signal-desc {
+            margin-top: 5px;
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
 
         /* --- 5. 特效：支撐壓力條 --- */
-        .sr-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-        .sr-row { 
-            display: flex; align-items: center; justify-content: space-between;
-            background: #0d1117; padding: 12px; border-radius: 8px; position: relative; overflow: hidden;
+        .sr-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
         }
-        .sr-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; }
-        .sr-bar.red { background-color: #ff453a; box-shadow: 2px 0 10px rgba(255, 69, 58, 0.3); }
-        .sr-bar.green { background-color: #3fb950; box-shadow: 2px 0 10px rgba(63, 185, 80, 0.3); }
-        .sr-left { display: flex; align-items: center; gap: 10px; margin-left: 10px; }
-        .sr-price { font-size: 1.3rem; font-weight: bold; width: 90px; color: #e6edf3; }
-        .sr-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; color: #0d1117; }
-        .sr-badge.red { background-color: #ff453a; }
-        .sr-badge.green { background-color: #3fb950; }
-        .sr-right { text-align: right; }
-        .sr-gap { font-size: 0.9rem; font-weight: bold; }
-        .sr-source { font-size: 0.75rem; color: #8b949e; margin-top: 2px; }
+
+        .sr-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #0d1117;
+            padding: 12px;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sr-bar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+        }
+
+        .sr-bar.red {
+            background-color: #ff453a;
+            box-shadow: 2px 0 10px rgba(255, 69, 58, 0.3);
+        }
+
+        .sr-bar.green {
+            background-color: #3fb950;
+            box-shadow: 2px 0 10px rgba(63, 185, 80, 0.3);
+        }
+
+        .sr-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 10px;
+        }
+
+        .sr-price {
+            font-size: 1.3rem;
+            font-weight: bold;
+            width: 90px;
+            color: #e6edf3;
+        }
+
+        .sr-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #0d1117;
+        }
+
+        .sr-badge.red {
+            background-color: #ff453a;
+        }
+
+        .sr-badge.green {
+            background-color: #3fb950;
+        }
+
+        .sr-right {
+            text-align: right;
+        }
+
+        .sr-gap {
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .sr-source {
+            font-size: 0.75rem;
+            color: #8b949e;
+            margin-top: 2px;
+        }
 
         /* 一般網格 */
-        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .data-item { background: #0d1117; padding: 10px; border-radius: 6px; text-align: center; }
-        .data-label { font-size: 0.75rem; color: #8b949e; margin-bottom: 4px; }
-        .data-val { font-size: 1rem; font-weight: bold; color: #e6edf3; }
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .data-item {
+            background: #0d1117;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .data-label {
+            font-size: 0.75rem;
+            color: #8b949e;
+            margin-bottom: 4px;
+        }
+
+        .data-val {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #e6edf3;
+        }
 
         /* 免責聲明 Footer */
         .footer-disclaimer {
-            margin-top: auto; padding: 20px; text-align: center; font-size: 0.75rem; color: #484f58; width: 90%; max-width: 600px; border-top: 1px solid #21262d;
+            margin-top: auto;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #484f58;
+            width: 90%;
+            max-width: 600px;
+            border-top: 1px solid #21262d;
         }
 
-        #loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: #58a6ff; padding: 20px 40px; border-radius: 12px; z-index: 999; font-size: 1.2rem; backdrop-filter: blur(5px); }
-
+        #loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: #58a6ff;
+            padding: 20px 40px;
+            border-radius: 12px;
+            z-index: 999;
+            font-size: 1.2rem;
+            backdrop-filter: blur(5px);
+        }
     </style>
 </head>
+
 <body>
 
     <div class="navbar">
         <div class="app-title"><i class="fa-solid fa-robot"></i> AI 金融戰情室</div>
-        <input type="text" id="access_code" placeholder="🔑 通行碼" style="width: 100px; padding: 8px; text-align: center;">
+        <input type="text" id="access_code" placeholder="🔑 通行碼"
+            style="width: 100px; padding: 8px; text-align: center;">
     </div>
 
     <div class="search-area">
@@ -148,28 +437,38 @@
     <div class="grid-menu">
         <div class="menu-item tech" onclick="run('MA')"><i class="fa-solid fa-chart-line"></i><span>均線 MA</span></div>
         <div class="menu-item tech" onclick="run('KD')"><i class="fa-solid fa-water"></i><span>KD 指標</span></div>
-        <div class="menu-item tech" onclick="run('MACD')"><i class="fa-solid fa-chart-simple"></i><span>MACD</span></div>
+        <div class="menu-item tech" onclick="run('MACD')"><i class="fa-solid fa-chart-simple"></i><span>MACD</span>
+        </div>
         <div class="menu-item tech" onclick="run('RSI')"><i class="fa-solid fa-bolt"></i><span>RSI</span></div>
 
         <div class="menu-item tool" onclick="run('SR')"><i class="fa-solid fa-layer-group"></i><span>支撐壓力</span></div>
-        <div class="menu-item tool" onclick="run('FIB')"><i class="fa-solid fa-ruler-vertical"></i><span>斐波那契</span></div>
-        <div class="menu-item tool" onclick="run('GAP')"><i class="fa-solid fa-arrows-up-down"></i><span>缺口分析</span></div>
+        <div class="menu-item tool" onclick="run('FIB')"><i class="fa-solid fa-ruler-vertical"></i><span>斐波那契</span>
+        </div>
+        <div class="menu-item tool" onclick="run('GAP')"><i class="fa-solid fa-arrows-up-down"></i><span>缺口分析</span>
+        </div>
         <div class="menu-item tool" onclick="run('PATTERN')"><i class="fa-solid fa-shapes"></i><span>型態辨識</span></div>
 
         <div class="menu-item tool" onclick="run('BOX')"><i class="fa-regular fa-square"></i><span>箱型理論</span></div>
         <div class="menu-item tool" onclick="run('REG')"><i class="fa-solid fa-road"></i><span>回歸通道</span></div>
-        <div class="menu-item tool" onclick="run('VALUE')"><i class="fa-solid fa-scale-balanced"></i><span>價值估算</span></div>
-        <div class="menu-item fund" onclick="run('CHIPS')"><i class="fa-solid fa-users-viewfinder"></i><span>籌碼分析</span></div>
-        
-        <div class="menu-item fund" onclick="run('FINANCIAL')"><i class="fa-solid fa-file-invoice-dollar"></i><span>財報營收</span></div>
-        <div class="menu-item ai" onclick="run('SUMMARY')" style="grid-column: span 3; background: linear-gradient(90deg, #161b22, #21262d);">
+        <div class="menu-item tool" onclick="run('VALUE')"><i class="fa-solid fa-scale-balanced"></i><span>價值估算</span>
+        </div>
+        <div class="menu-item fund" onclick="run('CHIPS')"><i class="fa-solid fa-users-viewfinder"></i><span>籌碼分析</span>
+        </div>
+
+        <div class="menu-item fund" onclick="run('FINANCIAL')"><i
+                class="fa-solid fa-file-invoice-dollar"></i><span>財報營收</span></div>
+        <div class="menu-item" onclick="window.open('/retrolyze', '_blank')" style="border-color: #ca8a04;"><i
+                class="fa-solid fa-clock-rotate-left" style="color: #ca8a04;"></i><span>AI 歷史回測</span></div>
+        <div class="menu-item ai" onclick="run('SUMMARY')"
+            style="grid-column: span 2; background: linear-gradient(90deg, #161b22, #21262d);">
             <i class="fa-solid fa-microchip"></i><span>AI 綜合健檢診斷</span>
         </div>
 
         <div class="menu-item demon admin-hidden" onclick="run('DEMON')" style="grid-column: span 2; margin-top: 5px;">
             <i class="fa-solid fa-ghost"></i><span>妖股獵手 (Admin)</span>
         </div>
-        <div class="menu-item admin-export admin-hidden" onclick="exportData()" style="grid-column: span 2; margin-top: 5px;">
+        <div class="menu-item admin-export admin-hidden" onclick="exportData()"
+            style="grid-column: span 2; margin-top: 5px;">
             <i class="fa-solid fa-file-csv"></i><span>匯出流量報表</span>
         </div>
     </div>
@@ -182,7 +481,7 @@
                 <span id="stock-name" class="stock-name">---</span>
                 <span id="stock-price" class="price-tag">---</span>
             </div>
-            
+
             <div id="score-card" class="score-container" style="display: none;">
                 <div class="score-circle" id="score-circle-bg">
                     <div class="score-inner">
@@ -191,14 +490,14 @@
                     </div>
                 </div>
             </div>
-            
+
             <div id="signal-box" class="signal-box sig-hold">
                 <div id="signal-text">---</div>
                 <div id="signal-desc">---</div>
             </div>
 
             <div id="vals-grid" class="data-grid"></div>
-            
+
             <div id="sr-container" class="sr-list" style="display: none;"></div>
         </div>
 
@@ -215,8 +514,8 @@
     <script>
         let myChart = null;
 
-        const ADMIN_KEYS = ["RAY_ADMIN_888", "BOSS_001"]; 
-        document.getElementById('access_code').addEventListener('input', function(e) {
+        const ADMIN_KEYS = ["RAY_ADMIN_888", "BOSS_001"];
+        document.getElementById('access_code').addEventListener('input', function (e) {
             const inputVal = e.target.value.trim();
             const adminBtns = document.querySelectorAll('.admin-hidden');
             if (ADMIN_KEYS.includes(inputVal)) {
@@ -238,7 +537,7 @@
             try {
                 const res = await fetch('/api/admin/export', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ access_code: accessCode })
                 });
                 if (res.status === 403) { alert("⛔ 權限不足！"); return; }
@@ -247,7 +546,7 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `Traffic_Report_${new Date().toISOString().slice(0,10)}.csv`;
+                a.download = `Traffic_Report_${new Date().toISOString().slice(0, 10)}.csv`;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
@@ -259,7 +558,7 @@
             const code = document.getElementById('code').value;
             const buyPrice = document.getElementById('buy_price').value;
             const accessCode = document.getElementById('access_code').value;
-            
+
             if (type !== 'DEMON' && !code) { alert("請輸入股票代碼！"); return; }
 
             document.getElementById('loading').style.display = 'block';
@@ -268,7 +567,7 @@
             try {
                 const res = await fetch('/api/analyze', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ code, type, buy_price: buyPrice, access_code: accessCode })
                 });
 
@@ -296,7 +595,7 @@
             document.getElementById('signal-text').textContent = res.signal;
             document.getElementById('signal-desc').textContent = res.desc;
             box.className = 'signal-box';
-            
+
             const sig = res.signal;
             if (sig.includes('買') || sig.includes('多') || sig.includes('強') || sig.includes('A') || sig.includes('向上') || sig.includes('挑戰壓力')) {
                 box.classList.add('sig-buy');
@@ -309,7 +608,7 @@
             const srContainer = document.getElementById('sr-container');
             const valsGrid = document.getElementById('vals-grid');
             const scoreCard = document.getElementById('score-card');
-            
+
             srContainer.style.display = 'none';
             valsGrid.style.display = 'grid';
             scoreCard.style.display = 'none';
@@ -318,10 +617,10 @@
                 valsGrid.style.display = 'none';
                 srContainer.style.display = 'flex';
                 srContainer.innerHTML = '';
-                
+
                 for (const [k, v] of Object.entries(res.vals)) {
                     if (k === '現價') continue;
-                    
+
                     const valStr = String(v);
 
                     if (valStr.includes('|')) {
@@ -330,7 +629,7 @@
                         const typeStr = parts[1];
                         const gap = parts[2];
                         const source = parts[3];
-                        
+
                         const isRes = typeStr === '壓力';
                         const colorClass = isRes ? 'red' : 'green';
                         const gapColor = gap.includes('+') ? '#ff453a' : '#3fb950';
@@ -350,7 +649,7 @@
                         `;
                     }
                     else {
-                        if (k.includes('---')) continue; 
+                        if (k.includes('---')) continue;
                         let colorStyle = '#c9d1d9';
                         if (valStr.includes('+') || valStr.includes('獲利')) colorStyle = '#ff453a';
                         if (valStr.includes('-') || valStr.includes('賠') || valStr.includes('損')) colorStyle = '#3fb950';
@@ -367,7 +666,7 @@
                         `;
                     }
                 }
-            } 
+            }
             else {
                 valsGrid.innerHTML = '';
                 for (const [k, v] of Object.entries(res.vals)) {
@@ -379,9 +678,9 @@
 
                     let colorClass = '';
                     const vStr = String(v);
-                    if(vStr.includes('+') || vStr.includes('買') || vStr.includes('向上')) colorClass = 'color: #ff453a;';
-                    if(vStr.includes('-') || vStr.includes('賣') || vStr.includes('向下')) colorClass = 'color: #3fb950;';
-                    
+                    if (vStr.includes('+') || vStr.includes('買') || vStr.includes('向上')) colorClass = 'color: #ff453a;';
+                    if (vStr.includes('-') || vStr.includes('賣') || vStr.includes('向下')) colorClass = 'color: #3fb950;';
+
                     valsGrid.innerHTML += `
                         <div class="data-item">
                             <div class="data-label">${k}</div>
@@ -392,7 +691,7 @@
 
             const chartCard = document.getElementById('chart-card');
             const noChartTypes = ['FINANCIAL', 'CHIPS', 'FIB', 'DEMON', 'SR', 'GAP', 'PATTERN'];
-            
+
             if (noChartTypes.includes(type) || !data.chart) {
                 chartCard.style.display = 'none';
             } else {
@@ -441,4 +740,5 @@
         }
     </script>
 </body>
+
 </html>
