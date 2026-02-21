@@ -2,6 +2,7 @@ import pandas as pd
 from FinMind.data import DataLoader
 import datetime
 import re
+from cachetools import cached, TTLCache
 
 # --- 設定 FinMind API Token ---
 # 建議去 FinMind 官網申請免費 Token 填入，會穩定很多
@@ -51,6 +52,7 @@ def get_stock_name(input_str):
 
     return input_str, input_str
 
+@cached(cache=TTLCache(maxsize=500, ttl=3600))
 def fetch_data(stock_code, days=730):
     """ 抓取股價 (Price) """
     try:
@@ -81,6 +83,7 @@ def fetch_data(stock_code, days=730):
         print(f"[Fetch Price Error] {e}")
         return pd.DataFrame(), 0
 
+@cached(cache=TTLCache(maxsize=500, ttl=43200))
 def fetch_financials(stock_code):
     """ 抓取財報 (Financial Statements) & 月營收 """
     try:
@@ -101,6 +104,7 @@ def fetch_financials(stock_code):
         print(f"[Fetch Financial Error] {e}")
         return pd.DataFrame(), pd.DataFrame()
 
+@cached(cache=TTLCache(maxsize=500, ttl=3600))
 def fetch_institutional_investors(stock_code, days=90):
     """ 抓取三大法人買賣超數據 (Debug版) """
     try:

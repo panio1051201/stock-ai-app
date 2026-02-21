@@ -8,14 +8,17 @@ import pandas as pd
 from datetime import timedelta
 from flask import Flask, jsonify, render_template, request, Response
 from flask_cors import CORS
+import urllib.request
+import json
 import data_loader
+import concurrent.futures
 
 sys.path.append(os.getcwd())
 
 # ==========================================
 # 1. 引入所有策略模組
 # ==========================================
-from strategies.basic import ma, kd, rsi, macd, box, regression, value, financial, chips, fibonacci, support_resistance, gap, pattern
+from strategies.basic import ma, kd, rsi, macd, box, regression, value, financial, chips, fibonacci, support_resistance, gap, pattern, bollinger
 from strategies.advanced import kd_rsi, ma_macd, macd_rsi, summary, find_demon
 
 app = Flask(__name__)
@@ -41,7 +44,7 @@ STRATEGIES = {
     'MA': ma, 'KD': kd, 'RSI': rsi, 'MACD': macd, 'BOX': box, 'REG': regression, 
     'VALUE': value, 'FINANCIAL': financial, 'CHIPS': chips, 
     'FIB': fibonacci, 'SR': support_resistance,
-    'GAP': gap, 'PATTERN': pattern,
+    'GAP': gap, 'PATTERN': pattern, 'BOLLINGER': bollinger,
     'KDRSI': kd_rsi, 'MAKD': ma_macd, 'MACDRSI': macd_rsi, 
     'SUMMARY': summary, 'DEMON': find_demon
 }
@@ -112,6 +115,11 @@ def check_permission(ip, access_code, st_type):
     if is_admin or is_vip: return True, ""
     
     # 訪客限制
+    if len(USAGE_DB) > 1000:
+        expired = [ip for ip, data in USAGE_DB.items() if now > data['reset_time']]
+        for e_ip in expired:
+            del USAGE_DB[e_ip]
+
     if ip not in USAGE_DB:
         USAGE_DB[ip] = {'reset_time': now + timedelta(hours=LIMIT_HOURS), 'count': 0}
     else:
@@ -131,10 +139,6 @@ def check_permission(ip, access_code, st_type):
 @app.route('/')
 def index():
     return render_template('index.html')
-
-@app.route('/retrolyze')
-def retrolyze():
-    return render_template('retrolyze.html')
 
 @app.route('/api/admin/export', methods=['POST'])
 def export_stats():
@@ -189,33 +193,44 @@ def analyze_single():
     if st_type != 'DEMON':
         try:
             name, full_code = data_loader.get_stock_name(code)
-            
-            if st_type == 'FINANCIAL':
-                fin_data = data_loader.fetch_financials(full_code)
-                _, price = data_loader.fetch_data(full_code, days=5)
-            elif st_type == 'CHIPS':
-                chip_data = data_loader.fetch_institutional_investors(full_code)
-                _, price = data_loader.fetch_data(full_code, days=5)
-            elif st_type == 'SUMMARY':
-                df, price = data_loader.fetch_data(full_code)
-                fin_data = data_loader.fetch_financials(full_code)
-                chip_data = data_loader.fetch_institutional_investors(full_code)
-            else:
-                df, price = data_loader.fetch_data(full_code)
-            
-            if st_type in ['SUMMARY', 'CHIPS']:
+
+            def fetch_margin():
                 try:
                     import FinMind
                     from FinMind.data import DataLoader
                     api = DataLoader()
-                    margin_data = api.taiwan_stock_margin_purchase_short_sale(
+                    return api.taiwan_stock_margin_purchase_short_sale(
                         stock_id=full_code,
                         start_date=(datetime.datetime.now() - timedelta(days=20)).strftime('%Y-%m-%d')
                     )
-                except: pass
+                except: return None
+            
+            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+                if st_type == 'FINANCIAL':
+                    f_fin = executor.submit(data_loader.fetch_financials, full_code)
+                    f_price = executor.submit(data_loader.fetch_data, full_code, 5)
+                    fin_data = f_fin.result()
+                    _, price = f_price.result()
+                elif st_type == 'CHIPS':
+                    f_chip = executor.submit(data_loader.fetch_institutional_investors, full_code)
+                    f_price = executor.submit(data_loader.fetch_data, full_code, 5)
+                    chip_data = f_chip.result()
+                    _, price = f_price.result()
+                elif st_type == 'SUMMARY':
+                    f_df = executor.submit(data_loader.fetch_data, full_code)
+                    f_fin = executor.submit(data_loader.fetch_financials, full_code)
+                    f_chip = executor.submit(data_loader.fetch_institutional_investors, full_code)
+                    f_margin = executor.submit(fetch_margin)
+                    
+                    df, price = f_df.result()
+                    fin_data = f_fin.result()
+                    chip_data = f_chip.result()
+                    margin_data = f_margin.result()
+                else:
+                    df, price = data_loader.fetch_data(full_code)
 
         except Exception as e:
-            return jsonify({'error': '資料抓取失敗'})
+            return jsonify({'error': f'資料抓取失敗: {e}'})
     
     track_activity(user_ip, full_code, st_type, chip_data, margin_data)
 
@@ -276,6 +291,28 @@ def analyze_single():
         response['chart'] = {'dates': df.index.strftime('%Y-%m-%d').tolist(), 'prices': df['Close'].tolist()}
         
     return jsonify(response)
+
+@app.route('/api/proxy/retrolyze', methods=['POST'])
+def proxy_retrolyze():
+    try:
+        req_data = request.json
+        req = urllib.request.Request(
+            'https://retrolyze.3mi.tw/api/backtest/compare',
+            data=json.dumps(req_data).encode('utf-8'),
+            headers={
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        )
+        with urllib.request.urlopen(req) as res:
+            response_data = json.loads(res.read().decode('utf-8'))
+            return jsonify(response_data)
+    except urllib.error.HTTPError as e:
+        err_msg = e.read().decode('utf-8') if e.fp else str(e)
+        return jsonify({'error': f"HTTPError {e.code}: {err_msg}"}), e.code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     print("AI 全端金融戰情室 (SaaS Cloud Ver.) 啟動中...")

@@ -423,6 +423,58 @@
 
 <body>
 
+    <!-- Retrolyze Modal -->
+    <div id="retrolyze-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div><i class="fa-solid fa-clock-rotate-left" style="color: #ca8a04;"></i> AI 歷史績效回測設定</div>
+                <div class="close-btn" onclick="closeRetrolyzeModal()"><i class="fa-solid fa-xmark"></i></div>
+            </div>
+
+            <div class="form-group">
+                <label>股票代碼</label>
+                <input type="text" id="rz_symbol" placeholder="例如: 0050 或 2330">
+            </div>
+            <div class="form-group data-grid">
+                <div>
+                    <label>回測年限</label>
+                    <select id="rz_period">
+                        <option value="1">近 1 年</option>
+                        <option value="3">近 3 年</option>
+                        <option value="5" selected>近 5 年</option>
+                        <option value="10">近 10 年</option>
+                        <option value="cust">自訂區間 (預設三年)</option>
+                    </select>
+                </div>
+                <div>
+                    <label>初始本金 (元)</label>
+                    <input type="number" id="rz_capital" value="100000" step="10000">
+                </div>
+            </div>
+
+            <div style="border-top: 1px dashed #30363d; margin: 15px 0;"></div>
+
+            <div class="form-group data-grid">
+                <div>
+                    <label>定期定額頻率</label>
+                    <select id="rz_dca_freq">
+                        <option value="monthly" selected>每月投入一次</option>
+                        <option value="weekly">每週投入一次</option>
+                    </select>
+                </div>
+                <div>
+                    <label>技術策略</label>
+                    <select id="rz_strategy">
+                        <option value="ma_cross" selected>均線黃金交叉</option>
+                        <option value="kd">KD 指標交易</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn-submit" onclick="submitRetrolyze()">開始檢測三種策略 <i class="fa-solid fa-rocket"></i></button>
+        </div>
+    </div>
+
     <div class="navbar">
         <div class="app-title"><i class="fa-solid fa-robot"></i> AI 金融戰情室</div>
         <input type="text" id="access_code" placeholder="🔑 通行碼"
@@ -434,12 +486,19 @@
         <div style="flex: 1;"><input type="number" id="buy_price" placeholder="成本 (選填)"></div>
     </div>
 
+    <!-- 我的自選股區塊 -->
+    <div id="watchlist-container"
+        style="width: 95%; max-width: 600px; margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+    </div>
+
     <div class="grid-menu">
         <div class="menu-item tech" onclick="run('MA')"><i class="fa-solid fa-chart-line"></i><span>均線 MA</span></div>
         <div class="menu-item tech" onclick="run('KD')"><i class="fa-solid fa-water"></i><span>KD 指標</span></div>
         <div class="menu-item tech" onclick="run('MACD')"><i class="fa-solid fa-chart-simple"></i><span>MACD</span>
         </div>
         <div class="menu-item tech" onclick="run('RSI')"><i class="fa-solid fa-bolt"></i><span>RSI</span></div>
+        <div class="menu-item tech" onclick="run('BOLLINGER')"><i
+                class="fa-solid fa-arrows-to-circle"></i><span>布林通道</span></div>
 
         <div class="menu-item tool" onclick="run('SR')"><i class="fa-solid fa-layer-group"></i><span>支撐壓力</span></div>
         <div class="menu-item tool" onclick="run('FIB')"><i class="fa-solid fa-ruler-vertical"></i><span>斐波那契</span>
@@ -457,7 +516,7 @@
 
         <div class="menu-item fund" onclick="run('FINANCIAL')"><i
                 class="fa-solid fa-file-invoice-dollar"></i><span>財報營收</span></div>
-        <div class="menu-item" onclick="window.open('/retrolyze', '_blank')" style="border-color: #ca8a04;"><i
+        <div class="menu-item" onclick="openRetrolyzeModal()" style="border-color: #ca8a04;"><i
                 class="fa-solid fa-clock-rotate-left" style="color: #ca8a04;"></i><span>AI 歷史回測</span></div>
         <div class="menu-item ai" onclick="run('SUMMARY')"
             style="grid-column: span 2; background: linear-gradient(90deg, #161b22, #21262d);">
@@ -478,7 +537,12 @@
     <div id="result-area">
         <div class="card">
             <div class="stock-header">
-                <span id="stock-name" class="stock-name">---</span>
+                <div>
+                    <span id="stock-name" class="stock-name">---</span>
+                    <i id="star-btn" class="fa-regular fa-star"
+                        style="cursor: pointer; color: #8b949e; margin-left: 10px; font-size: 1.2rem;"
+                        onclick="toggleWatchlist()"></i>
+                </div>
                 <span id="stock-price" class="price-tag">---</span>
             </div>
 
@@ -513,6 +577,65 @@
 
     <script>
         let myChart = null;
+        let currentWatchlist = [];
+        let currentDisplayCode = "";
+
+        // === 自選股系統 (Watchlist) ===
+        async function loadWatchlist() {
+            try {
+                const stored = localStorage.getItem('my_watchlist');
+                if (stored) {
+                    currentWatchlist = JSON.parse(stored);
+                } else {
+                    currentWatchlist = [];
+                }
+                renderWatchlist();
+            } catch (e) { console.error("載入自選股失敗", e); }
+        }
+
+        function renderWatchlist() {
+            const container = document.getElementById('watchlist-container');
+            container.innerHTML = '';
+            if (!currentWatchlist || currentWatchlist.length === 0) {
+                container.innerHTML = '<span style="color: #8b949e; font-size: 0.85rem; padding: 10px;">⭐ 目前沒有自選股。搜尋後點擊星號即可加入追蹤！</span>';
+                return;
+            }
+            currentWatchlist.forEach(code => {
+                container.innerHTML += `<div class="menu-item fund" style="height: 35px; padding: 5px 15px; display: inline-flex; width: auto; flex-direction: row; gap: 8px; border-radius: 20px;" onclick="document.getElementById('code').value='${code}'; run('SUMMARY')"><i class="fa-solid fa-star" style="color: #f1c40f; margin:0; font-size: 0.9rem;"></i> <span style="font-size: 0.9rem;">${code}</span></div>`;
+            });
+        }
+
+        async function toggleWatchlist() {
+            if (!currentDisplayCode) return;
+            const idx = currentWatchlist.indexOf(currentDisplayCode);
+            if (idx > -1) {
+                currentWatchlist.splice(idx, 1);
+            } else {
+                currentWatchlist.push(currentDisplayCode);
+            }
+            renderWatchlist();
+            updateStarUI();
+
+            try {
+                localStorage.setItem('my_watchlist', JSON.stringify(currentWatchlist));
+            } catch (e) {
+                console.error("更新自選股失敗", e);
+            }
+        }
+
+        function updateStarUI() {
+            const btn = document.getElementById('star-btn');
+            if (!btn) return;
+            if (currentWatchlist.includes(currentDisplayCode)) {
+                btn.className = "fa-solid fa-star";
+                btn.style.color = "#f1c40f";
+            } else {
+                btn.className = "fa-regular fa-star";
+                btn.style.color = "#8b949e";
+            }
+        }
+
+        window.onload = loadWatchlist;
 
         const ADMIN_KEYS = ["RAY_ADMIN_888", "BOSS_001"];
         document.getElementById('access_code').addEventListener('input', function (e) {
@@ -587,8 +710,11 @@
             const info = data.info;
             const res = data.result;
 
+            currentDisplayCode = String(info.code).trim();
             document.getElementById('stock-name').textContent = `${info.name} (${info.code})`;
             document.getElementById('stock-price').textContent = info.price;
+            updateStarUI();
+
             document.getElementById('result-area').style.display = 'block';
 
             const box = document.getElementById('signal-box');
@@ -713,6 +839,162 @@
             bg.style.background = `conic-gradient(${color} 0% ${score}%, #30363d ${score}% 100%)`;
         }
 
+        // === AI 歷史回測 Modal 控制 ===
+        function openRetrolyzeModal() {
+            // 帶入畫面上原有的代碼
+            const currentCode = document.getElementById('code').value;
+            if (currentCode) {
+                document.getElementById('rz_symbol').value = currentCode;
+            }
+            document.getElementById('retrolyze-modal').style.display = 'flex';
+        }
+
+        function closeRetrolyzeModal() {
+            document.getElementById('retrolyze-modal').style.display = 'none';
+        }
+
+        // === 執行 AI 歷史回測 API ===
+        async function submitRetrolyze() {
+            const symbol = document.getElementById('rz_symbol').value;
+            if (!symbol) { alert("請輸入回測代碼！"); return; }
+
+            closeRetrolyzeModal();
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result-area').style.display = 'none';
+
+            // 準備 Request Body (配合 Retrolyze 的 API 格式)
+            // 自動算出開始與結束日 (以選定的年限為準)
+            const today = new Date();
+            const endDate = today.toISOString().split('T')[0];
+            const yearsToSub = parseInt(document.getElementById('rz_period').value) || 3;
+            const startDateObj = new Date(today);
+            startDateObj.setFullYear(today.getFullYear() - yearsToSub);
+            const startDate = startDateObj.toISOString().split('T')[0];
+
+            const payload = {
+                symbol: String(symbol).trim(),
+                start_date: startDate,
+                end_date: endDate,
+                initial_capital: parseFloat(document.getElementById('rz_capital').value),
+                dca_frequency: document.getElementById('rz_dca_freq').value,
+                dca_periods: 1, // 暫定, API 端會處理
+                strategy: document.getElementById('rz_strategy').value,
+                short_window: 5, // 預設 5MA
+                long_window: 20  // 預設 20MA
+            };
+
+            try {
+                // 透過本機 Server 代理向遠端 Retrolyze API 發送請求，繞過 CORS 與 403 阻擋
+                const res = await fetch('/api/proxy/retrolyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) {
+                    throw new Error("API 回應錯誤");
+                }
+                const data = await res.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                renderRetrolyzeResult(data);
+
+            } catch (e) {
+                alert("回測失敗: " + e.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // === 轉譯 Retrolyze 數據到原有的 Dashboard 上 ===
+        function renderRetrolyzeResult(apiData) {
+            // 1. 設定標題
+            document.getElementById('stock-name').textContent = `[歷史回測] ${apiData.symbol}`;
+            document.getElementById('stock-price').textContent = "策略比較";
+            document.getElementById('result-area').style.display = 'block';
+
+            // 2. 顯示 AI 訊號框 (設定為回測贏家)
+            const box = document.getElementById('signal-box');
+            let winnerStr = "單筆買進 (Hold)";
+            let wRet = apiData.buy_hold.total_return;
+
+            if (apiData.dca.total_return > wRet) { winnerStr = "定期定額 (DCA)"; wRet = apiData.dca.total_return; }
+            if (apiData.strategy.total_return > wRet) { winnerStr = "技術指標 (Strategy)"; wRet = apiData.strategy.total_return; }
+
+            document.getElementById('signal-text').textContent = `最佳策略: ${winnerStr}`;
+            document.getElementById('signal-desc').textContent = `在指定區間內，此策略可帶來最高 ${wRet.toFixed(1)}% 的總報酬率`;
+            box.className = 'signal-box sig-hold';
+            box.classList.add(wRet > 0 ? 'sig-buy' : 'sig-sell');
+
+            // 3. 準備並顯示下面的網格資料
+            document.getElementById('score-card').style.display = 'none';
+            document.getElementById('sr-container').style.display = 'none';
+            const valsGrid = document.getElementById('vals-grid');
+            valsGrid.style.display = 'grid';
+            valsGrid.innerHTML = '';
+
+            // 挑選幾個重要指標放進去
+            const dcaInvested = document.getElementById('rz_capital').value || 100000;
+            const m = {
+                "單筆總報酬": `<span style="color:#58a6ff">${apiData.buy_hold.total_return.toFixed(1)}%</span>`,
+                "定額總報酬": `<span style="color:#a371f7">${apiData.dca.total_return.toFixed(1)}%</span>`,
+                "策略總報酬": `<span style="color:#ca8a04">${apiData.strategy.total_return.toFixed(1)}%</span>`,
+                "策略勝率": `${(apiData.strategy.win_rate || 0).toFixed(1)}%`,
+                "總投入本金": `$${Math.round(dcaInvested).toLocaleString()}`,
+                "最大虧損(單筆)": `<span style="color:#3fb950">${apiData.buy_hold.max_drawdown.toFixed(1)}%</span>`
+            };
+
+            for (const [k, v] of Object.entries(m)) {
+                valsGrid.innerHTML += `
+                    <div class="data-item">
+                        <div class="data-label">${k}</div>
+                        <div class="data-val">${v}</div>
+                    </div>`;
+            }
+
+            // 4. 重繪圖表 (支援 3 條線)
+            const chartCard = document.getElementById('chart-card');
+            chartCard.style.display = 'block';
+
+            if (myChart) {
+                myChart.destroy();
+            }
+            // 由於只呼叫 destory 有時無法消除所有狀態，重新建立整個 Canvas
+            chartCard.innerHTML = '<canvas id="mainChart" style="height: 250px;"></canvas>';
+
+            const ctx = document.getElementById('mainChart').getContext('2d');
+
+            // 擷取並對齊三方資料
+            const dates = apiData.dates;
+            const bhNavs = apiData.buy_hold.portfolio_curve;
+            const dcaNavs = apiData.dca.portfolio_curve;
+            const stNavs = apiData.strategy.portfolio_curve;
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        { label: '單筆買進', data: bhNavs, borderColor: 'rgba(88, 166, 255, 0.7)', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+                        { label: '定期定額', data: dcaNavs, borderColor: 'rgba(163, 113, 247, 0.7)', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+                        { label: '技術策略', data: stNavs, borderColor: 'rgba(202, 138, 4, 1.0)', borderWidth: 2, pointRadius: 0, tension: 0.1 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top', labels: { color: '#8b949e', boxWidth: 10 } }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: { position: 'right', grid: { color: '#30363d' }, ticks: { color: '#8b949e' } }
+                    },
+                    interaction: { mode: 'index', intersect: false }
+                }
+            });
+        }
+
         function renderChart(chartData) {
             const ctx = document.getElementById('mainChart').getContext('2d');
             if (myChart) myChart.destroy();
@@ -720,19 +1002,35 @@
             gradient.addColorStop(0, 'rgba(88, 166, 255, 0.4)');
             gradient.addColorStop(1, 'rgba(88, 166, 255, 0)');
 
+            const datasets = [{
+                label: '股價', data: chartData.prices,
+                borderColor: '#58a6ff', backgroundColor: gradient,
+                borderWidth: 2, fill: true, pointRadius: 0, tension: 0.1
+            }];
+
+            if (chartData.lines) {
+                chartData.lines.forEach(line => {
+                    datasets.push({
+                        label: line.label,
+                        data: line.data,
+                        borderColor: line.color,
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        tension: 0.1,
+                        fill: false
+                    });
+                });
+            }
+
             myChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: chartData.dates,
-                    datasets: [{
-                        label: '股價', data: chartData.prices,
-                        borderColor: '#58a6ff', backgroundColor: gradient,
-                        borderWidth: 2, fill: true, pointRadius: 0, tension: 0.1
-                    }]
+                    datasets: datasets
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: { legend: { display: chartData.lines ? true : false, labels: { color: '#8b949e', boxWidth: 10 } } },
                     scales: { x: { display: false }, y: { position: 'right', grid: { color: '#30363d' }, ticks: { color: '#8b949e' } } },
                     interaction: { mode: 'index', intersect: false }
                 }
