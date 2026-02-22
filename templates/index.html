@@ -454,28 +454,34 @@
 
             <div style="border-top: 1px dashed #30363d; margin: 15px 0;"></div>
 
-            <div class="form-group data-grid">
-                <div>
-                    <label>定期定額頻率</label>
-                    <select id="rz_dca_freq">
-                        <option value="monthly" selected>每月投入一次</option>
-                        <option value="weekly">每週投入一次</option>
-                    </select>
-                </div>
-                <div>
-                    <label>技術策略</label>
-                    <select id="rz_strategy">
-                        <option value="MA" selected>均線黃金交叉 (MA)</option>
-                        <option value="KD">KD 指標交易</option>
-                        <option value="MACD">MACD 趨勢</option>
-                        <option value="RSI">RSI 超買超賣</option>
-                        <option value="BOLLINGER">布林通道突破</option>
-                    </select>
-                </div>
+            <div>
+                <label>定期定額頻率</label>
+                <select id="rz_dca_freq">
+                    <option value="monthly" selected>每月投入一次</option>
+                    <option value="weekly">每週投入一次</option>
+                </select>
             </div>
-
-            <button class="btn-submit" onclick="submitRetrolyze()">開始檢測三種策略 <i class="fa-solid fa-rocket"></i></button>
+            <div>
+                <label>每次額外投入金額 (元)</label>
+                <input type="number" id="rz_dca_amount" value="10000" step="1000">
+            </div>
         </div>
+
+        <div class="form-group">
+            <div>
+                <label>技術策略</label>
+                <select id="rz_strategy">
+                    <option value="MA" selected>均線黃金交叉 (MA)</option>
+                    <option value="KD">KD 指標交易</option>
+                    <option value="MACD">MACD 趨勢</option>
+                    <option value="RSI">RSI 超買超賣</option>
+                    <option value="BOLLINGER">布林通道突破</option>
+                </select>
+            </div>
+        </div>
+
+        <button class="btn-submit" onclick="submitRetrolyze()">開始檢測三種策略 <i class="fa-solid fa-rocket"></i></button>
+    </div>
     </div>
 
     <div class="navbar">
@@ -886,6 +892,7 @@
                 end_date: endDate,
                 initial_capital: parseFloat(document.getElementById('rz_capital').value),
                 dca_frequency: document.getElementById('rz_dca_freq').value,
+                dca_amount: parseFloat(document.getElementById('rz_dca_amount').value) || 10000,
                 dca_periods: 1, // 暫定, API 端會處理
                 strategy: document.getElementById('rz_strategy').value,
                 short_window: 5, // 預設 5MA
@@ -944,14 +951,13 @@
             valsGrid.innerHTML = '';
 
             // 挑選幾個重要指標放進去
-            const dcaInvested = document.getElementById('rz_capital').value || 100000;
             const m = {
                 "單筆總報酬": `<span style="color:#58a6ff">${apiData.buy_hold.total_return.toFixed(1)}%</span>`,
                 "定額總報酬": `<span style="color:#a371f7">${apiData.dca.total_return.toFixed(1)}%</span>`,
                 "策略總報酬": `<span style="color:#ca8a04">${apiData.strategy.total_return.toFixed(1)}%</span>`,
+                "領取現金股利": `$${(apiData.buy_hold.total_cash_dividend || 0).toLocaleString()}`,
+                "最大虧損(單筆)": `<span style="color:#3fb950">${apiData.buy_hold.max_drawdown.toFixed(1)}%</span>`,
                 "策略勝率": `${(apiData.strategy.win_rate || 0).toFixed(1)}%`,
-                "總投入本金": `$${Math.round(dcaInvested).toLocaleString()}`,
-                "最大虧損(單筆)": `<span style="color:#3fb950">${apiData.buy_hold.max_drawdown.toFixed(1)}%</span>`
             };
 
             for (const [k, v] of Object.entries(m)) {

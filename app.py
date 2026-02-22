@@ -316,6 +316,7 @@ def proxy_retrolyze():
         initial_capital = req_data.get('initial_capital', 100000)
         dca_freq = req_data.get('dca_frequency', 'monthly')
         strategy = req_data.get('strategy', 'MA')
+        dca_amount = req_data.get('dca_amount', 10000)
         
         # 計算天數 (抓得比 start_date 更早一點，以免 MA20 等指標算不出來)
         start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d')
@@ -329,6 +330,16 @@ def proxy_retrolyze():
         if df.empty:
              return jsonify({'error': '找不到該股票資料'}), 404
              
+        # 抓取除權息資料
+        try:
+            import FinMind
+            from FinMind.data import DataLoader as FDataLoader
+            dl = FDataLoader()
+            dividend_df = dl.taiwan_stock_dividend(stock_id=full_code, start_date=start_date_str)
+        except Exception as e:
+            print(f"抓取除權息資料失敗: {e}")
+            dividend_df = None
+             
         # 切割日期，技術指標暖機用之前的日期，但回測金流從 start_date 開始計算？
         # backtest_engine 裡面是算完指標後直接過濾時間跑金流為佳，或是傳進引擎再去截斷
         # 這裡為了簡單，我們直接切日期餵給回測？ 不行，因為算均線需要前面的資料
@@ -340,7 +351,7 @@ def proxy_retrolyze():
         df_range = df.loc[start_date_str:end_date_str]
         if df_range.empty: return jsonify({'error': '該時段內沒有歷史資料'}), 404
         
-        result = backtest_engine.run_backtest(df_range, initial_capital, strategy, dca_freq)
+        result = backtest_engine.run_backtest(df_range, initial_capital, strategy, dca_freq, dca_amount, dividend_df)
         
         return jsonify(result)
         
