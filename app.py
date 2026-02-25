@@ -18,7 +18,7 @@ sys.path.append(os.getcwd())
 # ==========================================
 # 1. 引入所有策略模組
 # ==========================================
-from strategies.basic import ma, kd, rsi, macd, box, regression, value, financial, chips, fibonacci, support_resistance, gap, pattern, bollinger
+from strategies.basic import ma, kd, rsi, qqe, macd, box, regression, value, financial, chips, fibonacci, support_resistance, gap, pattern, bollinger
 from strategies.advanced import kd_rsi, ma_macd, macd_rsi, summary, find_demon, find_foreign_buy
 
 app = Flask(__name__)
@@ -42,7 +42,7 @@ ACCESS_LOG = [] # 詳細操作日誌 (匯出用)
 
 # 策略對應表
 STRATEGIES = {
-    'MA': ma, 'KD': kd, 'RSI': rsi, 'MACD': macd, 'BOX': box, 'REG': regression, 
+    'MA': ma, 'KD': kd, 'RSI': rsi, 'QQE': qqe, 'MACD': macd, 'BOX': box, 'REG': regression, 
     'VALUE': value, 'FINANCIAL': financial, 'CHIPS': chips, 
     'FIB': fibonacci, 'SR': support_resistance,
     'GAP': gap, 'PATTERN': pattern, 'BOLLINGER': bollinger,

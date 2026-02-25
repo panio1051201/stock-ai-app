@@ -173,6 +173,13 @@ def calculate_strategy(df, initial_capital, strategy_name, dividend_df=None):
             if close.iloc[i] < lower.iloc[i] and close.iloc[i-1] >= lower.iloc[i-1]: signals[i] = 1
             elif close.iloc[i] > upper.iloc[i] and close.iloc[i-1] <= upper.iloc[i-1]: signals[i] = -1
             
+    elif strategy_name == 'QQE':
+        from strategies.basic import qqe
+        rsi_ma, band, trend = qqe.calculate_qqe(df)
+        for i in range(1, len(df)):
+            if trend.iloc[i] == 1 and trend.iloc[i-1] == -1: signals[i] = 1
+            elif trend.iloc[i] == -1 and trend.iloc[i-1] == 1: signals[i] = -1
+            
     else:
         return calculate_buy_hold(df, initial_capital, dividend_df)
         

@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from strategies.basic import qqe, kd, rsi
 
 # 自動拆包小幫手
 def extract_df(data):
@@ -32,17 +33,38 @@ def analyze(df, stock_code=None, fin_data=None, chip_data=None, margin_data=None
         # MACD
         exp12 = df['Close'].ewm(span=12, adjust=False).mean()
         exp26 = df['Close'].ewm(span=26, adjust=False).mean()
-        macd = exp12 - exp26
-        signal_line = macd.ewm(span=9, adjust=False).mean()
-        macd_val = macd.iloc[-1]
+        macd_line = exp12 - exp26
+        signal_line = macd_line.ewm(span=9, adjust=False).mean()
+        macd_val = macd_line.iloc[-1]
         sig_val = signal_line.iloc[-1]
 
+        # --- 額外加入 QQE, KD, RSI 的三位一體判斷 (新增) ---
+        res_kd = kd.calculate_kd(df['Close'], df['High'], df['Low'])
+        k_val, d_val = res_kd[0], res_kd[1]
+        rsi_val = rsi.calculate_rsi(df['Close'], period=14)
+        rsi_ma, qqe_band, qqe_trend = qqe.calculate_qqe(df)
+        q_trend = qqe_trend.iloc[-1]
+        q_rsi_ma = rsi_ma.iloc[-1]
+
         tech_score = 0
-        if close > ma5: tech_score += 10
-        if close > ma20: tech_score += 10
-        if close > ma60: tech_score += 10
-        if ma5 > ma20: tech_score += 10
-        if macd_val > sig_val: tech_score += 10 
+        if close > ma5: tech_score += 5
+        if close > ma20: tech_score += 5
+        if close > ma60: tech_score += 5
+        if ma5 > ma20: tech_score += 5
+        if macd_val > sig_val: tech_score += 5
+        
+        # QQE + KD + RSI 權重增益
+        osc_score = 0
+        if q_trend == 1: osc_score += 5       # QQE 看多
+        if k_val > d_val: osc_score += 5      # KD 金叉
+        if rsi_val > 50: osc_score += 5       # RSI 強勢區
+        
+        # 三向共振加成
+        is_synergy = (q_trend == 1 and k_val > d_val and rsi_val > 50)
+        if is_synergy: osc_score += 10
+        
+        tech_score += osc_score
+        tech_score = min(50, tech_score) # 技術面上限調整為 50
 
         # --- 2. 基本面評估 (權重 20%) ---
         fund_score = 0
@@ -75,7 +97,7 @@ def analyze(df, stock_code=None, fin_data=None, chip_data=None, margin_data=None
             inst_msg = f"近{recent_days}日法人合買 {int(total_buy//1000)} 張"
             if total_buy < 0: inst_msg = f"近{recent_days}日法人合賣 {int(abs(total_buy)//1000)} 張"
 
-        # --- 4. 信用面評估 (融資券) (權重 20%) ---
+        # --- 4. 信用面評估 (融資券) (權重 10% -> 調整後上限 100) ---
         margin_score = 0
         margin_msg = "無融資券數據"
         if margin_data is not None and not margin_data.empty:
@@ -104,7 +126,7 @@ def analyze(df, stock_code=None, fin_data=None, chip_data=None, margin_data=None
                 margin_msg = "融資持平"
 
             if ss_change > 0 and price_change > 0:
-                margin_score += 10
+                margin_score += 5
                 margin_msg += " + 軋空發動"
 
         # --- 5. 總分計算 ---
@@ -127,6 +149,7 @@ def analyze(df, stock_code=None, fin_data=None, chip_data=None, margin_data=None
             if total_score >= 75:
                 if roi > 0: advice = "🔥 趨勢極強+獲利中 ➔ 建議加碼 (Pyramiding)"
                 else: advice = "📉 遭錯殺+基本面好 ➔ 建議分批攤平 (Average Down)"
+                if is_synergy: advice += " [觸發三位一體指標共振]"
             
             # B. 中高分區 (震盪偏多)
             elif total_score >= 60:
@@ -146,10 +169,11 @@ def analyze(df, stock_code=None, fin_data=None, chip_data=None, margin_data=None
         vals = {
             '🏆 總分評級': f"{total_score} 分",
             '信號': signal,
-            '💡 AI 操作建議': advice, # 新增這一行
+            '💡 AI 操作建議': advice,
             '收盤價': f"{close}",
-            '均線狀態': "多頭排列" if close > ma20 > ma60 else "整理/空頭",
-            'PER 本益比': pe_ratio,
+            'QQE 趨勢': "🟢 多頭" if q_trend == 1 else "🔴 空頭",
+            'KD 狀態': "黃金交叉" if k_val > d_val else "死亡交叉",
+            'RSI (14)': f"{rsi_val:.1f}",
             '法人動向': inst_msg,
             '資券變化': margin_msg,
             'MACD': "黃金交叉" if macd_val > sig_val else "死亡交叉"
