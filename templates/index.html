@@ -15,6 +15,7 @@
     <link rel="apple-touch-icon" href="/static/icon-192.png">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/technicalindicators@3.1.0/dist/browser.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -711,6 +712,28 @@
             document.getElementById('loading').style.display = 'block';
             document.getElementById('result-area').style.display = 'none';
 
+            // --- 客戶端運算分流 ---
+            const clientSideTypes = ['MA', 'KD', 'RSI', 'BOLLINGER', 'MACD', 'QQE'];
+            if (clientSideTypes.includes(type)) {
+                try {
+                    const res = await fetch('/api/raw_data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code, access_code: accessCode })
+                    });
+                    const data = await res.json();
+                    if (data.error) { alert(data.error); return; }
+
+                    const clientResult = calculateIndicatorLocally(type, data.ohlcv);
+                    renderUI({ ...data, result: clientResult, chart: { dates: data.ohlcv.date, prices: data.ohlcv.close } }, type);
+                    return;
+                } catch (e) {
+                    console.error("客戶端計算失敗，切換回伺服器端", e);
+                } finally {
+                    document.getElementById('loading').style.display = 'none';
+                }
+            }
+
             try {
                 const res = await fetch('/api/analyze', {
                     method: 'POST',
@@ -728,6 +751,113 @@
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
+        }
+
+        function calculateIndicatorLocally(type, ohlcv) {
+            const close = ohlcv.close;
+            const high = ohlcv.high;
+            const low = ohlcv.low;
+            const lastIdx = close.length - 1;
+            const c_price = close[lastIdx];
+
+            let result = { title: '', signal: '觀望', desc: '', vals: { '現價': c_price.toFixed(2) } };
+
+            if (type === 'MA') {
+                const ma5 = technicalindicators.SMA.calculate({ period: 5, values: close });
+                const ma20 = technicalindicators.SMA.calculate({ period: 20, values: close });
+                const c_ma5 = ma5[ma5.length - 1];
+                const c_ma20 = ma20[ma20.length - 1];
+                const p_ma20 = ma20[ma20.length - 2];
+
+                result.title = 'MA 戰法 (Client-Side)';
+                if (c_price > c_ma20 && c_ma20 > p_ma20) {
+                    result.signal = '波段持有 (多)';
+                    result.desc = '站在生命線之上且均線翻揚。';
+                } else if (c_price < c_ma20 && c_ma20 < p_ma20) {
+                    result.signal = '波段賣出 (空)';
+                    result.desc = '跌破生命線且均線下彎。';
+                } else {
+                    result.desc = '均線糾纏或趨勢不明。';
+                }
+                result.vals['5MA'] = c_ma5.toFixed(2);
+                result.vals['20MA'] = c_ma20.toFixed(2);
+            }
+            else if (type === 'KD') {
+                const input = { high, low, close, period: 9, signalPeriod: 3 };
+                const kd = technicalindicators.Stochastic.calculate(input);
+                const lastKD = kd[kd.length - 1];
+                result.title = 'KD 指標 (Client-Side)';
+                result.signal = lastKD.k > lastKD.d ? '黃金交叉' : '死亡交叉';
+                result.desc = `K值: ${lastKD.k.toFixed(1)}, D值: ${lastKD.d.toFixed(1)}`;
+                result.vals['K'] = lastKD.k.toFixed(1);
+                result.vals['D'] = lastKD.d.toFixed(1);
+            }
+            else if (type === 'BOLLINGER') {
+                const bollinger = technicalindicators.BollingerBands.calculate({ period: 20, values: close, stdDev: 2 });
+                const lastBB = bollinger[bollinger.length - 1];
+                result.title = '布林通道 (Client-Side)';
+                result.signal = c_price > lastBB.upper ? '突破上軌 (超強)' : (c_price < lastBB.lower ? '跌破下軌 (超跌)' : '軌道內震盪');
+                result.desc = `上軌: ${lastBB.upper.toFixed(1)}, 中軌: ${lastBB.middle.toFixed(1)}, 下軌: ${lastBB.lower.toFixed(1)}`;
+                result.vals['上軌'] = lastBB.upper.toFixed(1);
+                result.vals['下軌'] = lastBB.lower.toFixed(1);
+            }
+            else if (type === 'MACD') {
+                const macd = technicalindicators.MACD.calculate({ values: close, fastPeriod: 12, slowPeriod: 26, signalPeriod: 9, SimpleMAOscillator: false, SimpleMASignal: false });
+                const lastMACD = macd[macd.length - 1];
+                result.title = 'MACD 指標 (Client-Side)';
+                result.signal = lastMACD.MACD > lastMACD.signal ? '黃金交叉' : '死亡交叉';
+                result.desc = `DIF: ${lastMACD.MACD.toFixed(2)}, DEA: ${lastMACD.signal.toFixed(2)}`;
+                result.vals['DIF'] = lastMACD.MACD.toFixed(2);
+                result.vals['MACD'] = lastMACD.histogram.toFixed(2);
+            }
+            return result;
+        }
+
+        async function runClientBacktest(ohlcv, initialCapital, strategyType) {
+            const close = ohlcv.close;
+            const dates = ohlcv.date;
+            let cash = initialCapital;
+            let shares = 0;
+            let portfolioCurve = [];
+
+            // 簡易 MA 策略
+            if (strategyType === 'MA') {
+                const ma5 = technicalindicators.SMA.calculate({ period: 5, values: close });
+                const ma20 = technicalindicators.SMA.calculate({ period: 20, values: close });
+
+                // 對齊長度
+                const offset = close.length - ma20.length;
+
+                for (let i = 0; i < close.length; i++) {
+                    const price = close[i];
+                    if (i >= offset) {
+                        const idx = i - offset;
+                        const c_ma5 = ma5[i - (close.length - ma5.length)];
+                        const c_ma20 = ma20[idx];
+                        const p_ma5 = ma5[i - (close.length - ma5.length) - 1];
+                        const p_ma20 = ma20[idx - 1];
+
+                        if (c_ma5 > c_ma20 && p_ma5 <= p_ma20 && cash > 0) {
+                            shares = cash / price;
+                            cash = 0;
+                        } else if (c_ma5 < c_ma20 && p_ma5 >= p_ma20 && shares > 0) {
+                            cash = shares * price;
+                            shares = 0;
+                        }
+                    }
+                    portfolioCurve.push(Number((cash + shares * price).toFixed(2)));
+                }
+            } else {
+                // Buy and Hold
+                const firstPrice = close[0];
+                shares = initialCapital / firstPrice;
+                for (let i = 0; i < close.length; i++) {
+                    portfolioCurve.push(Number((shares * close[i]).toFixed(2)));
+                }
+            }
+
+            const totalReturn = ((portfolioCurve[portfolioCurve.length - 1] - initialCapital) / initialCapital) * 100;
+            return { total_return: totalReturn, portfolio_curve: portfolioCurve, max_drawdown: 0 }; // DD 略
         }
 
         function renderUI(data, type) {
@@ -886,48 +1016,36 @@
             document.getElementById('loading').style.display = 'block';
             document.getElementById('result-area').style.display = 'none';
 
-            // 準備 Request Body (配合 Retrolyze 的 API 格式)
-            // 自動算出開始與結束日 (以選定的年限為準)
-            const today = new Date();
-            const endDate = today.toISOString().split('T')[0];
-            const yearsToSub = parseInt(document.getElementById('rz_period').value) || 3;
-            const startDateObj = new Date(today);
-            startDateObj.setFullYear(today.getFullYear() - yearsToSub);
-            const startDate = startDateObj.toISOString().split('T')[0];
-
-            const payload = {
-                access_code: document.getElementById('access_code') ? document.getElementById('access_code').value : '',
-                symbol: String(symbol).trim(),
-                start_date: startDate,
-                end_date: endDate,
-                initial_capital: parseFloat(document.getElementById('rz_capital').value),
-                dca_frequency: document.getElementById('rz_dca_freq').value,
-                dca_amount: parseFloat(document.getElementById('rz_dca_amount').value) || 10000,
-                dca_periods: 1, // 暫定, API 端會處理
-                strategy: document.getElementById('rz_strategy').value,
-                short_window: 5, // 預設 5MA
-                long_window: 20  // 預設 20MA
-            };
-
             try {
-                // 透過本機 Server 代理向遠端 Retrolyze API 發送請求，繞過 CORS 與 403 阻擋
-                const res = await fetch('/api/proxy/retrolyze', {
+                // 優先使用客戶端回測實作
+                const accessCode = document.getElementById('access_code') ? document.getElementById('access_code').value : '';
+                const rawRes = await fetch('/api/raw_data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ code: symbol, access_code: accessCode })
                 });
+                const rawData = await rawRes.json();
+                if (rawData.error) throw new Error(rawData.error);
 
-                if (!res.ok) {
-                    throw new Error("API 回應錯誤");
-                }
-                const data = await res.json();
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                renderRetrolyzeResult(data);
+                const initialCapital = parseFloat(document.getElementById('rz_capital').value);
+                const strategyType = document.getElementById('rz_strategy').value;
+
+                const res_bh = await runClientBacktest(rawData.ohlcv, initialCapital, 'BH');
+                const res_st = await runClientBacktest(rawData.ohlcv, initialCapital, strategyType);
+
+                // 為了兼容 UI，模擬原有的 API 回傳格式
+                const mockApiData = {
+                    symbol: rawData.info.name,
+                    dates: rawData.ohlcv.date,
+                    buy_hold: res_bh,
+                    dca: res_bh, // 暫代
+                    strategy: res_st
+                };
+
+                renderRetrolyzeResult(mockApiData);
 
             } catch (e) {
-                alert("回測失敗: " + e.message);
+                alert("回測失敗: " + e.message + "。請確認伺服器連線或權限。");
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }

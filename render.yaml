@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: stock-ai-app
+    runtime: python
+    plan: free # 可根據需求改為 standard
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: FINMIND_API_TOKEN
+        sync: false # 需在 Render Dashboard 手動填入或由密鑰管理

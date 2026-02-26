@@ -5,8 +5,8 @@ import re
 from cachetools import cached, TTLCache
 
 # --- 設定 FinMind API Token ---
-# 建議去 FinMind 官網申請免費 Token 填入，會穩定很多
-API_TOKEN = "" 
+import os
+API_TOKEN = os.environ.get("FINMIND_API_TOKEN", "") 
 
 # 全域變數
 STOCK_MAP_NAME_TO_ID = {}

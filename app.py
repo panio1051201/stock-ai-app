@@ -143,6 +143,43 @@ def check_permission(ip, access_code, st_type):
 # 4. 路由設定
 # ==========================================
 
+@app.route('/api/raw_data', methods=['POST'])
+def get_raw_data():
+    """ 僅回傳原始 OHLCV 資料，供前端進行計算 """
+    data = request.json
+    code = data.get('code')
+    access_code = data.get('access_code', '')
+    user_ip = request.remote_addr
+
+    passed, msg = check_permission(user_ip, access_code, 'RAW')
+    if not passed: return jsonify({'error': msg})
+
+    if not code: return jsonify({'error': '請輸入股票代碼'})
+
+    try:
+        name, full_code = data_loader.get_stock_name(code)
+        df, price = data_loader.fetch_data(full_code)
+        
+        if df.empty:
+            return jsonify({'error': '找不到該股票資料'})
+
+        # 整理成前端易讀格式
+        res_data = {
+            'success': True,
+            'info': {'code': full_code, 'name': name, 'price': price},
+            'ohlcv': {
+                'date': df.index.strftime('%Y-%m-%d').tolist(),
+                'open': df['Open'].tolist(),
+                'high': df['High'].tolist(),
+                'low': df['Low'].tolist(),
+                'close': df['Close'].tolist(),
+                'volume': df['Volume'].tolist()
+            }
+        }
+        return jsonify(res_data)
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
 @app.route('/')
 def index():
     return render_template('index.html')
