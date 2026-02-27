@@ -19,16 +19,21 @@ def process_dividends(date_str, shares, dividend_df):
         # 檢查除息 (發現金)
         cash_match = dividend_df[dividend_df['CashExDividendTradingDate'] == date_str]
         if not cash_match.empty:
-            cash_dist = cash_match.iloc[0]['CashEarningsDistribution']
-            if pd.notna(cash_dist) and cash_dist > 0:
-                cash_div = shares * cash_dist
+            # Handle different column names from FinMind API
+            col_cash = 'CashEarningsDistribution' if 'CashEarningsDistribution' in cash_match.columns else 'cash_dividend'
+            if col_cash in cash_match.columns:
+                cash_dist = cash_match.iloc[0][col_cash]
+                if pd.notna(cash_dist) and cash_dist > 0:
+                    cash_div = shares * cash_dist
                 
         # 檢查除權 (發股票)，以面額10元計算配股比率
         stock_match = dividend_df[dividend_df['StockExDividendTradingDate'] == date_str]
         if not stock_match.empty:
-            stock_dist = stock_match.iloc[0]['StockEarningsDistribution']
-            if pd.notna(stock_dist) and stock_dist > 0:
-                stock_div = shares * (stock_dist / 10.0)
+            col_stock = 'StockEarningsDistribution' if 'StockEarningsDistribution' in stock_match.columns else 'stock_dividend'
+            if col_stock in stock_match.columns:
+                stock_dist = stock_match.iloc[0][col_stock]
+                if pd.notna(stock_dist) and stock_dist > 0:
+                    stock_div = shares * (stock_dist / 10.0)
                 
     return cash_div, stock_div
 
@@ -40,6 +45,9 @@ def calculate_buy_hold(df, initial_capital, dividend_df=None):
     
     portfolio_curve = []
     total_cash_dividend = 0.0
+    original_invested = float(initial_capital)
+    added_invested = 0.0
+    total_stock_dividend_shares = 0.0
     
     for date, row in df.iterrows():
         date_str = date.strftime('%Y-%m-%d')
@@ -48,6 +56,7 @@ def calculate_buy_hold(df, initial_capital, dividend_df=None):
         cash_div, stock_div = process_dividends(date_str, shares, dividend_df)
         total_cash_dividend += cash_div
         shares += stock_div
+        total_stock_dividend_shares += stock_div
         
         # 買進持有的日常淨值 = 目前股數 * 目前價 + 拿到的現金股利
         portfolio_curve.append(round(shares * row['Close'] + total_cash_dividend, 2))
@@ -55,11 +64,18 @@ def calculate_buy_hold(df, initial_capital, dividend_df=None):
     final_value = portfolio_curve[-1] if portfolio_curve else initial_capital
     total_return = (final_value - initial_capital) / initial_capital * 100
     
+    last_price = df['Close'].iloc[-1] if not df.empty else 0
+    stock_dividend_value = total_stock_dividend_shares * last_price
+    
     return {
         'total_return': round(total_return, 2),
         'max_drawdown': calculate_drawdown(portfolio_curve),
         'portfolio_curve': portfolio_curve,
-        'total_cash_dividend': int(total_cash_dividend)
+        'total_cash_dividend': int(total_cash_dividend),
+        'original_invested': int(original_invested),
+        'added_invested': int(added_invested),
+        'total_stock_dividend_shares': round(total_stock_dividend_shares, 2),
+        'stock_dividend_value': int(stock_dividend_value)
     }
 
 def calculate_dca(df, initial_capital, freq='monthly', dca_amount=10000, dividend_df=None):
@@ -79,6 +95,10 @@ def calculate_dca(df, initial_capital, freq='monthly', dca_amount=10000, dividen
     invest_set = set(invest_dates)
     total_cash_dividend = 0.0
     
+    original_invested = float(initial_capital)
+    added_invested = 0.0
+    total_stock_dividend_shares = 0.0
+    
     # 第一天初始建倉
     if cash_left > 0:
         first_price = df['Close'].iloc[0]
@@ -92,11 +112,13 @@ def calculate_dca(df, initial_capital, freq='monthly', dca_amount=10000, dividen
         cash_div, stock_div = process_dividends(date_str, total_shares, dividend_df)
         total_cash_dividend += cash_div
         total_shares += stock_div
+        total_stock_dividend_shares += stock_div
         
         # 處理額外定期定額投入
         # 判斷是不是定額日 (除了第一天已經 put All in)
         if date in invest_set and date != dates[0]:
             total_invested += dca_amount
+            added_invested += dca_amount
             total_shares += dca_amount / row['Close']
             
         current_value = total_shares * row['Close'] + total_cash_dividend
@@ -107,11 +129,18 @@ def calculate_dca(df, initial_capital, freq='monthly', dca_amount=10000, dividen
     final_value = portfolio_curve[-1] if portfolio_curve else total_invested
     total_return = (final_value - total_invested) / total_invested * 100 if total_invested > 0 else 0
     
+    last_price = df['Close'].iloc[-1] if not df.empty else 0
+    stock_dividend_value = total_stock_dividend_shares * last_price
+    
     return {
         'total_return': round(total_return, 2),
         'max_drawdown': calculate_drawdown(portfolio_curve),
         'portfolio_curve': portfolio_curve,
-        'total_cash_dividend': int(total_cash_dividend)
+        'total_cash_dividend': int(total_cash_dividend),
+        'original_invested': int(original_invested),
+        'added_invested': int(added_invested),
+        'total_stock_dividend_shares': round(total_stock_dividend_shares, 2),
+        'stock_dividend_value': int(stock_dividend_value)
     }
 
 def calculate_strategy(df, initial_capital, strategy_name, dividend_df=None):
