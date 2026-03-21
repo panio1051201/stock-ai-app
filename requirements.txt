@@ -8,3 +8,4 @@ Requests==2.32.5
 scipy==1.17.1
 yfinance==0.2.66
 gunicorn==23.0.0
+tqdm==4.66.1
