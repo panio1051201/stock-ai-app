@@ -162,6 +162,38 @@
 
         /* 妖股 (紅) */
 
+        /* 小白功能 (統一一樣式) */
+        .menu-item.beginner {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 10px 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            height: 75px;
+        }
+
+        .menu-item.beginner:active {
+            transform: scale(0.95);
+            background-color: #30363d;
+        }
+
+        .menu-item.beginner i {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .menu-item.beginner span {
+            font-size: 0.75rem;
+            color: #c9d1d9;
+            font-weight: 500;
+        }
+
         /* 管理員匯出按鈕 */
         .menu-item.admin-export {
             background: #30363d;
@@ -734,21 +766,21 @@
             <i class="fa-solid fa-file-csv"></i><span>匯出流量報表</span>
         </div>
         
-        <!-- 小白功能按鈕 -->
-        <div class="menu-item" onclick="showStockReview()" style="background: linear-gradient(135deg, #238636, #2ea043); border-color: #3fb950;">
-            <i class="fa-solid fa-heart-pulse" style="color: #fff;"></i><span style="color: #fff;">股票健檢</span>
+        <!-- 小白功能按鈕 - 統一風格 -->
+        <div class="menu-item beginner" onclick="showStockReview()" style="border-color: #3fb950;">
+            <i class="fa-solid fa-heart-pulse" style="color: #3fb950;"></i><span>股票健檢</span>
         </div>
-        <div class="menu-item" onclick="showPortfolio()" style="background: linear-gradient(135deg, #1d4ed8, #3b82f6); border-color: #60a5fa;">
-            <i class="fa-solid fa-wallet" style="color: #fff;"></i><span style="color: #fff;">我的持股</span>
+        <div class="menu-item beginner" onclick="showPortfolio()" style="border-color: #58a6ff;">
+            <i class="fa-solid fa-wallet" style="color: #58a6ff;"></i><span>我的持股</span>
         </div>
-        <div class="menu-item" onclick="showStockRadar()" style="background: linear-gradient(135deg, #7c3aed, #a855f7); border-color: #c084fc;">
-            <i class="fa-solid fa-satellite-dish" style="color: #fff;"></i><span style="color: #fff;">好股雷達</span>
+        <div class="menu-item beginner" onclick="showStockRadar()" style="border-color: #a855f7;">
+            <i class="fa-solid fa-satellite-dish" style="color: #a855f7;"></i><span>好股雷達</span>
         </div>
-        <div class="menu-item" onclick="showVirtualTrader()" style="background: linear-gradient(135deg, #ea580c, #f97316); border-color: #fb923c;">
-            <i class="fa-solid fa-gamepad" style="color: #fff;"></i><span style="color: #fff;">模擬炒股</span>
+        <div class="menu-item beginner" onclick="showVirtualTrader()" style="border-color: #f97316;">
+            <i class="fa-solid fa-gamepad" style="color: #f97316;"></i><span>模擬炒股</span>
         </div>
-        <div class="menu-item" onclick="showPriceAlerts()" style="background: linear-gradient(135deg, #dc2626, #ef4444); border-color: #f87171;">
-            <i class="fa-solid fa-bell" style="color: #fff;"></i><span style="color: #fff;">價格警報</span>
+        <div class="menu-item beginner" onclick="showPriceAlerts()" style="border-color: #f85149;">
+            <i class="fa-solid fa-bell" style="color: #f85149;"></i><span>價格警報</span>
         </div>
     </div>
 
