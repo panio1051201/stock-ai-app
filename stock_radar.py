@@ -19,7 +19,7 @@ def radar_safe_stocks(limit=20):
     results = []
     
     # 安全檢查：確保 CATEGORY_MAP 已載入
-    if not data_loader.CATEGORY_MAP:
+    if not getattr(data_loader, 'CATEGORY_MAP', {}):
         try:
             data_loader.init_stock_list()
         except:
