@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>AI 金融戰情室 Pro</title>
+    <title>金融戰情室 Pro</title>
 
     <!-- PWA & Mobile Support -->
     <link rel="manifest" href="/static/manifest.json">
@@ -150,7 +150,7 @@
             color: #2ea043;
         }
 
-        /* AI (綠) */
+        /* 系統 (綠) */
         .menu-item.demon {
             background: linear-gradient(135deg, #1f2937, #000);
             border-color: #ff453a;
@@ -429,10 +429,183 @@
             font-size: 1.2rem;
             backdrop-filter: blur(5px);
         }
+
+        /* --- 6. 側邊欄 (分類股) --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(3px);
+            z-index: 1000;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -320px;
+            width: 300px;
+            height: 100vh;
+            background: #161b22;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+            z-index: 1001;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #30363d;
+            background: #0d1117;
+        }
+
+        .sidebar-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #58a6ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-close {
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #8b949e;
+            transition: color 0.2s;
+        }
+
+        .sidebar-close:hover {
+            color: #fff;
+        }
+
+        .sidebar-search {
+            padding: 15px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .sidebar-search input {
+            width: 100%;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 10px;
+            color: #fff;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .sidebar-search input:focus {
+            border-color: #58a6ff;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+            scrollbar-width: thin;
+            scrollbar-color: #30363d #161b22;
+        }
+
+        /* 給 Chrome, Safari, Edge 捲軸用 */
+        .sidebar-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar-content::-webkit-scrollbar-track {
+            background: #161b22;
+        }
+
+        .sidebar-content::-webkit-scrollbar-thumb {
+            background-color: #30363d;
+            border-radius: 10px;
+        }
+
+        .category-group {
+            border-bottom: 1px solid #30363d;
+        }
+
+        .category-header {
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #c9d1d9;
+            font-weight: bold;
+            transition: background 0.2s;
+            user-select: none;
+        }
+
+        .category-header:hover {
+            background: #21262d;
+        }
+
+        .category-header i {
+            transition: transform 0.3s;
+        }
+
+        .category-header.active i {
+            transform: rotate(180deg);
+        }
+
+        .category-header.active {
+            color: #58a6ff;
+        }
+
+        .category-list {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background: #0d1117;
+        }
+
+        .category-item {
+            padding: 12px 20px 12px 40px;
+            cursor: pointer;
+            color: #8b949e;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .category-item:hover {
+            background: #21262d;
+            color: #fff;
+            border-left-color: #58a6ff;
+        }
+        }
     </style>
 </head>
 
 <body>
+    <!-- 側邊欄 Sidebar -->
+    <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title"><i class="fa-solid fa-layer-group"></i> 產業分類股</div>
+            <i class="fa-solid fa-xmark sidebar-close" onclick="closeSidebar()"></i>
+        </div>
+        <div class="sidebar-search">
+            <input type="text" id="sidebar-search-input" placeholder="🔍 搜尋產業..." oninput="filterCategories()">
+        </div>
+        <div class="sidebar-content" id="sidebar-content">
+            <div style="text-align:center; padding: 20px; color:#8b949e;"><i
+                    class="fa-solid fa-circle-notch fa-spin"></i> 載入中...</div>
+        </div>
+    </div>
 
     <!-- Retrolyze Modal -->
     <div id="retrolyze-modal" class="modal-overlay">
@@ -497,7 +670,11 @@
     </div>
 
     <div class="navbar">
-        <div class="app-title"><i class="fa-solid fa-robot"></i> AI 金融戰情室</div>
+        <div class="app-title">
+            <i class="fa-solid fa-bars" onclick="openSidebar()"
+                style="cursor:pointer; margin-right: 15px; color: #c9d1d9; font-size: 1.3rem;"></i>
+            <i class="fa-solid fa-robot"></i> 金融戰情室
+        </div>
         <input type="text" id="access_code" placeholder="🔑 通行碼"
             style="width: 100px; padding: 8px; text-align: center;">
     </div>
@@ -541,7 +718,7 @@
                 class="fa-solid fa-clock-rotate-left" style="color: #ca8a04;"></i><span>歷史回測</span></div>
         <div class="menu-item ai" onclick="run('SUMMARY')"
             style="grid-column: span 2; background: linear-gradient(90deg, #161b22, #21262d);">
-            <i class="fa-solid fa-microchip"></i><span>AI 綜合健檢診斷</span>
+            <i class="fa-solid fa-microchip"></i><span>綜合健檢診斷</span>
         </div>
 
         <div class="menu-item demon admin-hidden" onclick="run('DEMON')" style="grid-column: span 2; margin-top: 5px;">
@@ -556,11 +733,30 @@
             style="grid-column: span 4; margin-top: 5px;">
             <i class="fa-solid fa-file-csv"></i><span>匯出流量報表</span>
         </div>
+        
+        <!-- 小白功能按鈕 -->
+        <div class="menu-item" onclick="showStockReview()" style="background: linear-gradient(135deg, #238636, #2ea043); border-color: #3fb950;">
+            <i class="fa-solid fa-heart-pulse" style="color: #fff;"></i><span style="color: #fff;">股票健檢</span>
+        </div>
+        <div class="menu-item" onclick="showPortfolio()" style="background: linear-gradient(135deg, #1d4ed8, #3b82f6); border-color: #60a5fa;">
+            <i class="fa-solid fa-wallet" style="color: #fff;"></i><span style="color: #fff;">我的持股</span>
+        </div>
+        <div class="menu-item" onclick="showStockRadar()" style="background: linear-gradient(135deg, #7c3aed, #a855f7); border-color: #c084fc;">
+            <i class="fa-solid fa-satellite-dish" style="color: #fff;"></i><span style="color: #fff;">好股雷達</span>
+        </div>
+        <div class="menu-item" onclick="showVirtualTrader()" style="background: linear-gradient(135deg, #ea580c, #f97316); border-color: #fb923c;">
+            <i class="fa-solid fa-gamepad" style="color: #fff;"></i><span style="color: #fff;">模擬炒股</span>
+        </div>
+        <div class="menu-item" onclick="showPriceAlerts()" style="background: linear-gradient(135deg, #dc2626, #ef4444); border-color: #f87171;">
+            <i class="fa-solid fa-bell" style="color: #fff;"></i><span style="color: #fff;">價格警報</span>
+        </div>
     </div>
 
-    <div id="loading"><i class="fa-solid fa-circle-notch fa-spin"></i> AI 運算中...</div>
+    <div id="loading"><i class="fa-solid fa-circle-notch fa-spin"></i> 系統運算中...</div>
 
     <div id="result-area">
+        <div id="confidence-alert" class="alert d-none" role="alert"
+            style="display: none; padding: 15px; margin-bottom: 20px; border-radius: 8px;"></div>
         <div class="card">
             <div class="stock-header">
                 <div>
@@ -576,7 +772,7 @@
                 <div class="score-circle" id="score-circle-bg">
                     <div class="score-inner">
                         <div class="score-num" id="score-val">0</div>
-                        <div class="score-label">AI 評分</div>
+                        <div class="score-label">系統評分</div>
                     </div>
                 </div>
             </div>
@@ -597,7 +793,7 @@
     </div>
 
     <div class="footer-disclaimer">
-        本服務僅為 AI 技術研究與測試用途，分析結果僅供參考，不構成任何投資建議。<br>
+        本服務僅為技術研究與測試用途，分析結果僅供參考，不構成任何投資建議。<br>
         使用者應自行評估風險，本站不承擔任何盈虧責任。
     </div>
 
@@ -605,6 +801,123 @@
         let myChart = null;
         let currentWatchlist = [];
         let currentDisplayCode = "";
+
+        // === 側邊欄 (分類股) 邏輯 ===
+        let categoryData = null;
+
+        function openSidebar() {
+            document.getElementById('sidebar-overlay').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('sidebar-overlay').style.opacity = '1';
+                document.getElementById('sidebar').style.left = '0';
+            }, 10);
+
+            if (!categoryData) {
+                loadCategories();
+            }
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').style.left = '-320px';
+            document.getElementById('sidebar-overlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('sidebar-overlay').style.display = 'none';
+            }, 300);
+        }
+
+        async function loadCategories() {
+            try {
+                const res = await fetch('/api/categories');
+                categoryData = await res.json();
+                renderSidebar();
+            } catch (e) {
+                console.error("載入分類失敗", e);
+                document.getElementById('sidebar-content').innerHTML = '<div style="text-align:center; padding: 20px; color:#ff453a;">載入失敗</div>';
+            }
+        }
+
+        function renderSidebar(filterText = "") {
+            const container = document.getElementById('sidebar-content');
+            container.innerHTML = '';
+
+            if (!categoryData) return;
+
+            let catsToRender = Object.keys(categoryData);
+
+            if (filterText) {
+                filterText = filterText.toLowerCase();
+                catsToRender = catsToRender.filter(c => c.toLowerCase().includes(filterText));
+            }
+
+            // 將陣列排序 (非未分類的筆畫/字母排序，未分類放最後)
+            const sortedCats = catsToRender.sort((a, b) => {
+                if (a === '未分類') return 1;
+                if (b === '未分類') return -1;
+                return a.localeCompare(b, 'zh-Hant');
+            });
+
+            if (sortedCats.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding: 20px; color:#8b949e;">找不到符合的產業</div>';
+                return;
+            }
+
+            sortedCats.forEach(cat => {
+                const stocks = categoryData[cat];
+                const group = document.createElement('div');
+                group.className = 'category-group';
+
+                group.innerHTML = `
+                    <div class="category-header" onclick="toggleCategory(this)">
+                        <span>${cat} <span style="font-size:0.8rem; color:#8b949e; margin-left: 5px;">(${stocks.length})</span></span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </div>
+                    <div class="category-list">
+                        ${stocks.map(s => `
+                            <div class="category-item" onclick="selectStockFromSidebar('${s.code}')" style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="display:flex; gap:10px;">
+                                    <span style="width:45px;">${s.code}</span>
+                                    <span>${s.name}</span>
+                                </div>
+                                <span style="color:${s.price === '-' ? '#8b949e' : '#e6edf3'}; font-weight:bold;">${s.price === '-' ? '--' : s.price}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(group);
+            });
+
+            // 如果搜尋中，預設展開全部
+            if (filterText) {
+                const headers = container.querySelectorAll('.category-header');
+                headers.forEach(h => {
+                    h.classList.add('active');
+                    const list = h.nextElementSibling;
+                    list.style.maxHeight = list.scrollHeight + "px";
+                });
+            }
+        }
+
+        function filterCategories() {
+            const input = document.getElementById('sidebar-search-input').value;
+            renderSidebar(input);
+        }
+
+        function toggleCategory(headerEl) {
+            headerEl.classList.toggle('active');
+            const list = headerEl.nextElementSibling;
+            if (headerEl.classList.contains('active')) {
+                list.style.maxHeight = list.scrollHeight + "px";
+            } else {
+                list.style.maxHeight = "0px";
+            }
+        }
+
+        function selectStockFromSidebar(code) {
+            closeSidebar();
+            document.getElementById('code').value = code;
+            run('SUMMARY');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
 
         // === 自選股系統 (Watchlist) ===
         async function loadWatchlist() {
@@ -862,7 +1175,7 @@
 
         function renderUI(data, type) {
             const info = data.info;
-            const res = data.result;
+            const res = data.result || { signal: '觀望', desc: '', vals: {} };
 
             currentDisplayCode = String(info.code).trim();
             document.getElementById('stock-name').textContent = `${info.name} (${info.code})`;
@@ -870,6 +1183,33 @@
             updateStarUI();
 
             document.getElementById('result-area').style.display = 'block';
+
+            const confidenceBox = document.getElementById('confidence-alert');
+            if (data.confidence) {
+                confidenceBox.style.display = 'block';
+                const level = data.confidence.level;
+                if (level === '低') {
+                    confidenceBox.className = "alert alert-danger";
+                    confidenceBox.style.backgroundColor = "rgba(218, 54, 51, 0.15)";
+                    confidenceBox.style.border = "1px solid #da3633";
+                    confidenceBox.style.color = "#f85149";
+                    confidenceBox.innerHTML = `<strong>🚨 系統狀態回報：Fallback_Hint 觸發</strong><br>目前搜尋工具遇到連線限制或查無即時報價，資料信心度為 ❗ 低 (<70%)。<br><span style="font-size: 0.85rem; opacity: 0.8;">原因: ${data.confidence.reason}</span>`;
+                } else if (level === '中') {
+                    confidenceBox.className = "alert alert-warning";
+                    confidenceBox.style.backgroundColor = "rgba(210, 153, 34, 0.15)";
+                    confidenceBox.style.border = "1px solid #d29922";
+                    confidenceBox.style.color = "#e3b341";
+                    confidenceBox.innerHTML = `<strong>⚠️ 系統狀態回報</strong><br>資料出現延遲，仍可供參考，資料信心度為 ⚠️ 中 (75%)。<br><span style="font-size: 0.85rem; opacity: 0.8;">原因: ${data.confidence.reason}</span>`;
+                } else {
+                    confidenceBox.className = "alert alert-success";
+                    confidenceBox.style.backgroundColor = "rgba(46, 160, 67, 0.15)";
+                    confidenceBox.style.border = "1px solid #2ea043";
+                    confidenceBox.style.color = "#3fb950";
+                    confidenceBox.innerHTML = `<strong>🔍 數據驗證通過</strong><br>取得當日或前一交易日真實報價，信心標籤 👍 高 (95%)。<br><span style="font-size: 0.85rem; opacity: 0.8;">原因: ${data.confidence.reason}</span>`;
+                }
+            } else {
+                confidenceBox.style.display = 'none';
+            }
 
             const box = document.getElementById('signal-box');
             document.getElementById('signal-text').textContent = res.signal;
@@ -993,7 +1333,7 @@
             bg.style.background = `conic-gradient(${color} 0% ${score}%, #30363d ${score}% 100%)`;
         }
 
-        // === AI 歷史回測 Modal 控制 ===
+        // === 歷史回測 Modal 控制 ===
         function openRetrolyzeModal() {
             // 帶入畫面上原有的代碼
             const currentCode = document.getElementById('code').value;
@@ -1007,7 +1347,7 @@
             document.getElementById('retrolyze-modal').style.display = 'none';
         }
 
-        // === 執行 AI 歷史回測 API ===
+        // === 執行歷史回測 API ===
         async function submitRetrolyze() {
             const symbol = document.getElementById('rz_symbol').value;
             if (!symbol) { alert("請輸入回測代碼！"); return; }
@@ -1068,7 +1408,7 @@
             document.getElementById('stock-price').textContent = "策略比較";
             document.getElementById('result-area').style.display = 'block';
 
-            // 2. 顯示 AI 訊號框 (設定為回測贏家)
+            // 2. 顯示訊號框 (設定為回測贏家)
             const box = document.getElementById('signal-box');
             let winnerStr = "單筆買進 (Hold)";
             let wRet = apiData.buy_hold.total_return;
@@ -1251,6 +1591,8 @@
             });
         }
     </script>
+    <!-- 小白功能 JS -->
+    <script src="/static/new_features.js"></script>
 </body>
 
 </html>

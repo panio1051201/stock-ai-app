@@ -21,6 +21,13 @@ sys.path.append(os.getcwd())
 from strategies.basic import ma, kd, rsi, qqe, macd, box, regression, value, financial, chips, fibonacci, support_resistance, gap, pattern, bollinger
 from strategies.advanced import kd_rsi, ma_macd, macd_rsi, summary, find_demon, find_foreign_buy
 
+# 小白功能模組
+from stock_review import quick_review
+from portfolio import Portfolio
+from price_alert import PriceAlert, AlertChecker
+from stock_radar import radar_safe_stocks, radar_value_stocks, radar_dividend_stocks, radar_trend_stocks
+from virtual_trader import VirtualTrader
+
 app = Flask(__name__)
 CORS(app)
 
@@ -50,6 +57,12 @@ STRATEGIES = {
     'SUMMARY': summary, 'DEMON': find_demon, 'FOREIGN_BUY': find_foreign_buy
 }
 
+# 小白功能實例
+user_portfolio = Portfolio()
+user_alerts = PriceAlert()
+alert_checker = AlertChecker(interval=60)
+virtual_trader = VirtualTrader(initial_cash=1000000)
+
 # ==========================================
 # 3. 核心功能函式
 # ==========================================
@@ -59,7 +72,6 @@ def track_activity(ip, stock_code, strategy, chip_data=None, margin_data=None):
     now = datetime.datetime.now()
     today = now.strftime('%Y-%m-%d')
     
-    # 更新停留時間與次數
     if today not in STATS_DB: STATS_DB[today] = {}
     if ip not in STATS_DB[today]:
         STATS_DB[today][ip] = {'first': now, 'last': now, 'hits': 1}
@@ -67,19 +79,16 @@ def track_activity(ip, stock_code, strategy, chip_data=None, margin_data=None):
         STATS_DB[today][ip]['last'] = now
         STATS_DB[today][ip]['hits'] += 1
     
-    # 解析籌碼數據
     inst_net = "N/A"
     margin_bal = "N/A"
     
     try:
-        # 三大法人買賣超
         if chip_data is not None and not chip_data.empty:
             cols = ['Foreign_Investor_Net', 'Investment_Trust_Net', 'Dealer_Net']
             valid_cols = [c for c in chip_data.columns if c in cols]
             if valid_cols:
                 inst_net = int(chip_data.iloc[-1][valid_cols].sum())
         
-        # 融資餘額
         if margin_data is not None and not margin_data.empty:
             tgt_col = 'MarginPurchaseTodayBalance'
             if tgt_col in margin_data.columns:
@@ -87,7 +96,6 @@ def track_activity(ip, stock_code, strategy, chip_data=None, margin_data=None):
     except:
         pass 
 
-    # 寫入日誌
     duration_min = (STATS_DB[today][ip]['last'] - STATS_DB[today][ip]['first']).total_seconds() / 60
     
     log_entry = {
@@ -110,14 +118,12 @@ def check_permission(ip, access_code, st_type):
     is_admin = code_input in ADMIN_KEYS
     is_vip = code_input in VIP_KEYS
     
-    # 專屬進階功能限制
     if st_type in ['DEMON', 'FOREIGN_BUY', 'RETROLYZE']:
         if not is_admin:
-            return False, "⛔ 權限不足：此進階功能 (包含全市場掃描與 AI 歷史回測) 僅限管理者 (Ray Cheng) 專用的喔！"
+            return False, "⛔ 權限不足：此進階功能 (包含全市場掃描與歷史回測) 僅限管理者 (Ray Cheng) 專用的喔！"
 
     if is_admin: return True, ""
     
-    # 訪客限制
     if len(USAGE_DB) > 1000:
         expired = [ip for ip, data in USAGE_DB.items() if now > data['reset_time']]
         for e_ip in expired:
@@ -143,9 +149,32 @@ def check_permission(ip, access_code, st_type):
 # 4. 路由設定
 # ==========================================
 
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/api/categories', methods=['GET'])
+def get_categories():
+    try:
+        prices = data_loader.get_latest_prices()
+    except:
+        prices = {}
+    
+    result_map = {}
+    for cat, stocks in data_loader.CATEGORY_MAP.items():
+        result_map[cat] = []
+        for s in stocks:
+            code = s['code']
+            price = prices.get(code, '-')
+            result_map[cat].append({
+                'code': code,
+                'name': s['name'],
+                'price': price
+            })
+    return jsonify(result_map)
+
 @app.route('/api/raw_data', methods=['POST'])
 def get_raw_data():
-    """ 僅回傳原始 OHLCV 資料，供前端進行計算 """
     data = request.json
     code = data.get('code')
     access_code = data.get('access_code', '')
@@ -163,10 +192,12 @@ def get_raw_data():
         if df.empty:
             return jsonify({'error': '找不到該股票資料'})
 
-        # 整理成前端易讀格式
+        confidence_info = data_loader.evaluate_data_confidence(df)
+        
         res_data = {
             'success': True,
             'info': {'code': full_code, 'name': name, 'price': price},
+            'confidence': confidence_info,
             'ohlcv': {
                 'date': df.index.strftime('%Y-%m-%d').tolist(),
                 'open': df['Open'].tolist(),
@@ -179,32 +210,6 @@ def get_raw_data():
         return jsonify(res_data)
     except Exception as e:
         return jsonify({'error': str(e)})
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/api/admin/export', methods=['POST'])
-def export_stats():
-    data = request.json
-    access_code = data.get('access_code', '')
-    
-    if access_code not in ADMIN_KEYS:
-        return jsonify({'error': '權限不足'}), 403
-
-    si = io.StringIO()
-    cw = csv.writer(si)
-    cw.writerow(['時間', '用戶IP', '查詢股票', '使用功能', '法人買賣超', '融資餘額', '今日操作次數', '停留時間'])
-    
-    for log in reversed(ACCESS_LOG):
-        cw.writerow([
-            log['Time'], log['IP'], log['Stock'], log['Strategy'], 
-            log['Inst_Net'], log['Margin_Bal'], 
-            log['Visit_Hits'], log['Stay_Time']
-        ])
-            
-    output = si.getvalue()
-    return Response('\ufeff' + output, mimetype="text/csv", headers={"Content-disposition": "attachment; filename=traffic_report.csv"})
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze_single():
@@ -224,7 +229,6 @@ def analyze_single():
     df, fin_data, chip_data, margin_data, price = None, None, None, None, 0
     name, full_code = "全市場掃描", "ALL"
 
-    # 解析成本價
     buy_price_val = None
     if buy_price_input and str(buy_price_input).strip() != "":
         try:
@@ -251,12 +255,12 @@ def analyze_single():
                     f_fin = executor.submit(data_loader.fetch_financials, full_code)
                     f_price = executor.submit(data_loader.fetch_data, full_code, 5)
                     fin_data = f_fin.result()
-                    _, price = f_price.result()
+                    df, price = f_price.result()
                 elif st_type == 'CHIPS':
                     f_chip = executor.submit(data_loader.fetch_institutional_investors, full_code)
                     f_price = executor.submit(data_loader.fetch_data, full_code, 5)
                     chip_data = f_chip.result()
-                    _, price = f_price.result()
+                    df, price = f_price.result()
                 elif st_type == 'SUMMARY':
                     f_df = executor.submit(data_loader.fetch_data, full_code)
                     f_fin = executor.submit(data_loader.fetch_financials, full_code)
@@ -279,7 +283,6 @@ def analyze_single():
     if not module: return jsonify({'error': '策略未找到'})
     
     try:
-        # ★ 策略執行分流
         if st_type == 'DEMON': 
             result = module.analyze(None, None)
         elif st_type == 'FINANCIAL': 
@@ -287,7 +290,6 @@ def analyze_single():
         elif st_type == 'CHIPS': 
             result = module.analyze(chip_data, stock_code=full_code)
         elif st_type == 'SUMMARY': 
-            # ★ 傳入成本價，讓策略自己算加碼/攤平建議
             result = module.analyze(df, stock_code=full_code, fin_data=fin_data, chip_data=chip_data, margin_data=margin_data, buy_price=buy_price_val)
         elif st_type == 'VALUE': 
             result = module.analyze(df, stock_code=full_code)
@@ -296,12 +298,9 @@ def analyze_single():
             
         if not result: raise ValueError("策略回傳空值")
 
-        # ★ 後處理：如果是 SUMMARY，它已經自己算過建議了，不需要這裡的通用建議
-        # 但如果是其他功能 (如 MA, KD)，我們還是要幫忙算一下簡單的損益
         if st_type != 'SUMMARY' and st_type != 'DEMON' and buy_price_val and buy_price_val > 0:
             roi = (price - buy_price_val) / buy_price_val * 100
             
-            # 通用建議 (比較笨，只看漲跌)
             sig = result.get('signal', '')
             is_bullish = any(x in sig for x in ["買", "多", "A", "B", "強", "成長"])
             advice = "獲利續抱" if roi > 0 else "停損觀察"
@@ -312,12 +311,9 @@ def analyze_single():
             new_vals.update(result['vals'])
             result['vals'] = new_vals
             
-        # 如果是 SUMMARY，我們只負責補上「您的成本」和「目前損益」的顯示 (如果策略沒回傳的話)
-        # 但其實 summary.py 已經有根據 roi 給建議了，這裡只要補顯示數值即可
         if st_type == 'SUMMARY' and buy_price_val and buy_price_val > 0:
              if '您的成本' not in result['vals']:
                  roi = (price - buy_price_val) / buy_price_val * 100
-                 # 插在最前面
                  temp = {'您的成本': buy_price_val, '目前損益': f"{roi:+.2f}%"}
                  temp.update(result['vals'])
                  result['vals'] = temp
@@ -325,13 +321,226 @@ def analyze_single():
     except Exception as e:
         return jsonify({'error': str(e)})
     
-    response = {'success': True, 'info': {'code': full_code, 'name': name, 'price': price}, 'result': result, 'chart': None}
+    confidence_info = {"level": "低", "score": "<70%", "reason": "未取得資料"}
+    if df is not None and not df.empty:
+        confidence_info = data_loader.evaluate_data_confidence(df)
+
+    response = {'success': True, 'info': {'code': full_code, 'name': name, 'price': price}, 'confidence': confidence_info, 'result': result, 'chart': None}
     
     no_chart_list = ['DEMON', 'FINANCIAL', 'CHIPS', 'GAP', 'PATTERN', 'SR']
     if st_type == 'SUMMARY' or (st_type not in no_chart_list and df is not None):
         response['chart'] = {'dates': df.index.strftime('%Y-%m-%d').tolist(), 'prices': df['Close'].tolist()}
         
     return jsonify(response)
+
+@app.route('/api/admin/export', methods=['POST'])
+def export_stats():
+    data = request.json
+    access_code = data.get('access_code', '')
+    
+    if access_code not in ADMIN_KEYS:
+        return jsonify({'error': '權限不足'}), 403
+
+    si = io.StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['時間', '用戶IP', '查詢股票', '使用功能', '法人買賣超', '融資餘額', '今日操作次數', '停留時間'])
+    
+    for log in reversed(ACCESS_LOG):
+        cw.writerow([
+            log['Time'], log['IP'], log['Stock'], log['Strategy'], 
+            log['Inst_Net'], log['Margin_Bal'], 
+            log['Visit_Hits'], log['Stay_Time']
+        ])
+            
+    output = si.getvalue()
+    return Response('\ufeff' + output, mimetype="text/csv", headers={"Content-disposition": "attachment; filename=traffic_report.csv"})
+
+# ==========================================
+# 5. 小白功能路由
+# ==========================================
+
+# --- 股票健檢 ---
+@app.route('/api/review', methods=['POST'])
+def get_stock_review():
+    """股票快速健檢"""
+    data = request.json
+    code = data.get('code')
+    buy_price = data.get('buy_price')
+    
+    if not code:
+        return jsonify({'error': '請輸入股票代碼'})
+    
+    try:
+        result = quick_review(code, buy_price)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+# --- 我的持股 ---
+@app.route('/api/portfolio')
+def get_portfolio():
+    """取得投資組合"""
+    try:
+        prices = data_loader.get_latest_prices()
+        summary = user_portfolio.get_summary(prices)
+        return jsonify(summary)
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/api/portfolio/add', methods=['POST'])
+def add_to_portfolio():
+    """新增持股"""
+    data = request.json
+    try:
+        success, msg = user_portfolio.add_stock(
+            data['code'],
+            data.get('name', ''),
+            int(data['shares']),
+            float(data['buy_price']),
+            data.get('buy_date')
+        )
+        return jsonify({'success': success, 'message': msg})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/portfolio/sell', methods=['POST'])
+def sell_from_portfolio():
+    """賣出持股"""
+    data = request.json
+    try:
+        success, msg = user_portfolio.remove_stock(
+            data['code'],
+            data.get('shares'),
+            float(data.get('sell_price', 0))
+        )
+        return jsonify({'success': success, 'message': msg})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+# --- 價格警報 ---
+@app.route('/api/alerts')
+def get_alerts():
+    """取得警報列表"""
+    active = request.args.get('active', 'false').lower() == 'true'
+    alerts = user_alerts.get_alerts(active_only=active)
+    return jsonify({'alerts': alerts, 'count': len(alerts)})
+
+@app.route('/api/alerts/add', methods=['POST'])
+def add_alert():
+    """新增警報"""
+    data = request.json
+    try:
+        alert_id = user_alerts.add_alert(
+            data['code'],
+            data.get('name', ''),
+            float(data['target_price']),
+            data.get('condition', 'above'),
+            data.get('note', '')
+        )
+        return jsonify({'success': True, 'alert_id': alert_id})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/alerts/remove/<alert_id>')
+def remove_alert(alert_id):
+    """移除警報"""
+    user_alerts.remove_alert(alert_id)
+    return jsonify({'success': True})
+
+@app.route('/api/alerts/check')
+def check_alerts():
+    """檢查警報"""
+    try:
+        triggered = user_alerts.check_alerts()
+        return jsonify({'triggered': len(triggered), 'alerts': triggered})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/api/alerts/start')
+def start_alert_checker():
+    """啟動警報檢查"""
+    line_token = request.args.get('line_token')
+    alert_checker.start(line_token)
+    return jsonify({'status': 'started'})
+
+# --- 好股雷達 ---
+@app.route('/api/radar')
+def get_radar():
+    """取得雷達結果"""
+    radar_type = request.args.get('type', 'all')
+    
+    try:
+        if radar_type == 'safe':
+            results = radar_safe_stocks(limit=30)
+        elif radar_type == 'value':
+            results = radar_value_stocks(limit=30)
+        elif radar_type == 'dividend':
+            results = radar_dividend_stocks(limit=30)
+        elif radar_type == 'trend':
+            results = radar_trend_stocks(limit=30)
+        else:
+            # 全部
+            results = {
+                'safe': radar_safe_stocks(limit=20),
+                'value': radar_value_stocks(limit=20),
+                'dividend': radar_dividend_stocks(limit=20),
+                'trend': radar_trend_stocks(limit=20)
+            }
+            return jsonify(results)
+        
+        return jsonify({'type': radar_type, 'results': results, 'count': len(results)})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+# --- 模擬炒股 ---
+@app.route('/api/trader/account')
+def get_virtual_account():
+    """取得虛擬帳戶"""
+    try:
+        prices = data_loader.get_latest_prices()
+        portfolio = virtual_trader.get_portfolio_value(prices)
+        return jsonify(portfolio)
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/api/trader/buy', methods=['POST'])
+def virtual_buy():
+    """虛擬買入"""
+    data = request.json
+    try:
+        success, msg = virtual_trader.buy(
+            data['code'],
+            data.get('name', ''),
+            int(data['shares']),
+            float(data['price'])
+        )
+        return jsonify({'success': success, 'message': msg})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/trader/sell', methods=['POST'])
+def virtual_sell():
+    """虛擬賣出"""
+    data = request.json
+    try:
+        success, msg = virtual_trader.sell(
+            data['code'],
+            data.get('shares'),
+            data.get('price')
+        )
+        return jsonify({'success': success, 'message': msg})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/trader/reset')
+def reset_trader():
+    """重置帳戶"""
+    success, msg = virtual_trader.reset()
+    return jsonify({'success': success, 'message': msg})
+
+# ==========================================
+# 6. 啟動
+# ==========================================
 
 import backtest_engine
 
@@ -341,7 +550,6 @@ def proxy_retrolyze():
         req_data = request.json
         access_code = req_data.get('access_code', '')
         
-        # 權限檢查 (僅 Admin 可用回測)
         client_ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0]
         is_ok, msg = check_permission(client_ip, access_code, 'RETROLYZE')
         if not is_ok:
@@ -355,19 +563,16 @@ def proxy_retrolyze():
         strategy = req_data.get('strategy', 'MA')
         dca_amount = req_data.get('dca_amount', 10000)
         
-        # 計算天數 (抓得比 start_date 更早一點，以免 MA20 等指標算不出來)
         start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d')
         end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d')
-        days = (datetime.datetime.now() - start_date).days + 100 # 多抓 100 天讓技術指標暖機
+        days = (datetime.datetime.now() - start_date).days + 100
         
-        # 抓取股價 (借用現有的 fetch_data，雖然有 cache 但無妨)
         name, full_code = data_loader.get_stock_name(symbol)
         df, _ = data_loader.fetch_data(full_code, days=days)
         
         if df.empty:
              return jsonify({'error': '找不到該股票資料'}), 404
              
-        # 抓取除權息資料
         try:
             import FinMind
             from FinMind.data import DataLoader as FDataLoader
@@ -376,15 +581,7 @@ def proxy_retrolyze():
         except Exception as e:
             print(f"抓取除權息資料失敗: {e}")
             dividend_df = None
-             
-        # 切割日期，技術指標暖機用之前的日期，但回測金流從 start_date 開始計算？
-        # backtest_engine 裡面是算完指標後直接過濾時間跑金流為佳，或是傳進引擎再去截斷
-        # 這裡為了簡單，我們直接切日期餵給回測？ 不行，因為算均線需要前面的資料
-        # backtest_engine_py 現有邏輯是：在整個 df 上跑迴圈。若有初始長度影響，我們應在引擎裡面加一個 start_date 過濾
-        # 但既然原本的 payload 帶過來，我們現在就將整個過濾後的 dataframe (計算完技術指標) 餵給他，或直接讓它在整段期間跑
-        # 稍作折衷：切出指定時間範圍的 df 交給 backtest_engine 因為原本的引擎不吃 start_date
-        
-        # 先計算所有指標
+            
         df_range = df.loc[start_date_str:end_date_str]
         if df_range.empty: return jsonify({'error': '該時段內沒有歷史資料'}), 404
         
@@ -397,6 +594,7 @@ def proxy_retrolyze():
 
 
 if __name__ == '__main__':
-    print("AI 全端金融戰情室 (SaaS Cloud Ver.) 啟動中...")
+    print("全端金融戰情室 (SaaS Cloud Ver.) 啟動中...")
+    print("✨ 小白功能已啟用: 股票健檢 / 持股 / 警報 / 雷達 / 模擬炒股")
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
