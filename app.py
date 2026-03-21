@@ -594,7 +594,11 @@ def proxy_retrolyze():
 
 
 if __name__ == '__main__':
-    print("全端金融戰情室 (SaaS Cloud Ver.) 啟動中...")
-    print("✨ 小白功能已啟用: 股票健檢 / 持股 / 警報 / 雷達 / 模擬炒股")
+    import sys
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    
+    print("[StockAI] Starting server...")
+    print("[StockAI] New features enabled: Review/Portfolio/Alerts/Radar/Trader")
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
