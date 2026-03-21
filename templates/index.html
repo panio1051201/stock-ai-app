@@ -1210,8 +1210,8 @@
             const res = data.result || { signal: '觀望', desc: '', vals: {} };
 
             currentDisplayCode = String(info.code).trim();
-            document.getElementById('stock-name').textContent = `${info.name} (${info.code})`;
-            document.getElementById('stock-price').textContent = info.price;
+            (document.getElementById('stock-name') || {textContent: ''}).textContent = `${info.name} (${info.code})`;
+            (document.getElementById('stock-price') || {textContent: ''}).textContent = info.price;
             updateStarUI();
 
             document.getElementById('result-area').style.display = 'block';
@@ -1436,8 +1436,8 @@
         // === 轉譯 Retrolyze 數據到原有的 Dashboard 上 ===
         function renderRetrolyzeResult(apiData) {
             // 1. 設定標題
-            document.getElementById('stock-name').textContent = `[歷史回測] ${apiData.symbol}`;
-            document.getElementById('stock-price').textContent = "策略比較";
+            (document.getElementById('stock-name') || {textContent: ''}).textContent = `[歷史回測] ${apiData.symbol}`;
+            (document.getElementById('stock-price') || {textContent: ''}).textContent = "策略比較";
             document.getElementById('result-area').style.display = 'block';
 
             // 2. 顯示訊號框 (設定為回測贏家)
