@@ -17,7 +17,15 @@ def radar_safe_stocks(limit=20):
     3. 股價在合理區間
     """
     results = []
-    categories = data_loader.CATEGORY_MAP
+    
+    # 安全檢查：確保 CATEGORY_MAP 已載入
+    if not data_loader.CATEGORY_MAP:
+        try:
+            data_loader.init_stock_list()
+        except:
+            pass
+    
+    categories = getattr(data_loader, 'CATEGORY_MAP', {})
     
     for cat_name, stocks in categories.items():
         for stock in stocks[:15]:
@@ -90,7 +98,12 @@ def radar_value_stocks(limit=20):
     3. 股價淨值比 < 1.5
     """
     results = []
-    categories = data_loader.CATEGORY_MAP
+    if not getattr(data_loader, 'CATEGORY_MAP', {}):
+        try:
+            data_loader.init_stock_list()
+        except:
+            pass
+    categories = getattr(data_loader, 'CATEGORY_MAP', {})
     
     for cat_name, stocks in categories.items():
         for stock in stocks[:15]:
@@ -169,7 +182,12 @@ def radar_dividend_stocks(limit=20):
     3.  股價穩定
     """
     results = []
-    categories = data_loader.CATEGORY_MAP
+    if not getattr(data_loader, 'CATEGORY_MAP', {}):
+        try:
+            data_loader.init_stock_list()
+        except:
+            pass
+    categories = getattr(data_loader, 'CATEGORY_MAP', {})
     
     for cat_name, stocks in categories.items():
         for stock in stocks[:15]:
@@ -244,7 +262,12 @@ def radar_trend_stocks(limit=20):
     3. 法人買超
     """
     results = []
-    categories = data_loader.CATEGORY_MAP
+    if not getattr(data_loader, 'CATEGORY_MAP', {}):
+        try:
+            data_loader.init_stock_list()
+        except:
+            pass
+    categories = getattr(data_loader, 'CATEGORY_MAP', {})
     
     for cat_name, stocks in categories.items():
         for stock in stocks[:15]:
