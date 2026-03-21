@@ -1,0 +1,480 @@
+/**
+ * UI Enhancements CSS - 視覺效果增強
+ */
+
+/* ================================
+   1. 動畫定義
+================================ */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* ================================
+   2. 增強卡片效果
+================================ */
+.card {
+    animation: fadeInUp 0.3s ease;
+}
+
+.card:hover {
+    border-color: #58a6ff;
+    box-shadow: 0 0 20px rgba(88, 166, 255, 0.1);
+}
+
+/* ================================
+   3. 按鈕效果
+================================ */
+button {
+    transition: all 0.2s ease;
+}
+
+button:active {
+    transform: scale(0.97);
+}
+
+.menu-item {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.menu-item:active {
+    transform: scale(0.95);
+}
+
+/* ================================
+   4. 載入骨架屏
+================================ */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        #21262d 25%,
+        #30363d 50%,
+        #21262d 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+}
+
+.skeleton-text {
+    height: 16px;
+    margin-bottom: 8px;
+}
+
+.skeleton-title {
+    height: 24px;
+    width: 60%;
+    margin-bottom: 16px;
+}
+
+.skeleton-chart {
+    height: 200px;
+    margin-bottom: 16px;
+}
+
+/* ================================
+   5. 增強滾動條
+================================ */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0d1117;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #484f58;
+}
+
+/* ================================
+   6. 打字機效果
+================================ */
+.typewriter {
+    overflow: hidden;
+    white-space: nowrap;
+    animation: typing 2s steps(40, end);
+}
+
+@keyframes typing {
+    from { width: 0; }
+    to { width: 100%; }
+}
+
+/* ================================
+   7. 脈衝指示器
+================================ */
+.pulse-indicator {
+    width: 8px;
+    height: 8px;
+    background: #3fb950;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+.pulse-indicator.offline {
+    background: #f85149;
+    animation: none;
+}
+
+/* ================================
+   8. 價格變動動畫
+================================ */
+.price-up {
+    color: #3fb950 !important;
+    animation: flashGreen 0.5s ease;
+}
+
+.price-down {
+    color: #f85149 !important;
+    animation: flashRed 0.5s ease;
+}
+
+@keyframes flashGreen {
+    0%, 100% { background: transparent; }
+    50% { background: rgba(63, 185, 80, 0.3); }
+}
+
+@keyframes flashRed {
+    0%, 100% { background: transparent; }
+    50% { background: rgba(248, 81, 73, 0.3); }
+}
+
+/* ================================
+   9. 滑動指示器
+================================ */
+.swipe-hint {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(88, 166, 255, 0.1);
+    border: 1px solid #58a6ff;
+    padding: 10px 20px;
+    border-radius: 20px;
+    color: #58a6ff;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: fadeInUp 0.5s ease;
+    z-index: 999;
+}
+
+.swipe-hint i {
+    animation: swipeArrow 1s ease infinite;
+}
+
+@keyframes swipeArrow {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-5px); }
+}
+
+/* ================================
+   10. 快捷鍵提示
+================================ */
+.shortcut-hint {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 10px;
+    color: #484f58;
+    background: #21262d;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.shortcut-hint kbd {
+    background: #0d1117;
+    padding: 2px 5px;
+    border-radius: 3px;
+    border: 1px solid #30363d;
+}
+
+/* ================================
+   11. 空狀態設計
+================================ */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #8b949e;
+}
+
+.empty-state i {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    color: #c9d1d9;
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    font-size: 14px;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+/* ================================
+   12. 響應式改進
+================================ */
+
+/* 小螢幕 */
+@media (max-width: 480px) {
+    .navbar {
+        padding: 12px 16px;
+    }
+    
+    .app-title {
+        font-size: 1rem;
+    }
+    
+    .search-area {
+        padding: 12px;
+        margin: 15px 0;
+    }
+    
+    .grid-menu {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    
+    .menu-item {
+        height: 70px;
+        padding: 8px 4px;
+    }
+    
+    .menu-item i {
+        font-size: 1.3rem;
+    }
+    
+    .menu-item span {
+        font-size: 0.7rem;
+    }
+    
+    .card {
+        padding: 15px;
+    }
+    
+    .price-tag {
+        font-size: 1.5rem;
+    }
+    
+    .data-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+}
+
+/* 超小螢幕 */
+@media (max-width: 360px) {
+    .grid-menu {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .menu-item {
+        height: 65px;
+    }
+}
+
+/* ================================
+   13. 觸控優化
+================================ */
+@media (hover: none) {
+    /* 移除 hover 效果 */
+    .menu-item:hover {
+        transform: none;
+        box-shadow: none;
+    }
+    
+    /* 添加觸控回饋 */
+    .menu-item:active {
+        background-color: #30363d;
+    }
+    
+    /* 增大點擊區域 */
+    button,
+    .menu-item,
+    input {
+        min-height: 44px;
+    }
+}
+
+/* ================================
+   14. 深色模式增強
+================================ */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-primary: #0d1117;
+        --bg-secondary: #161b22;
+        --bg-tertiary: #21262d;
+        --border-color: #30363d;
+        --text-primary: #c9d1d9;
+        --text-secondary: #8b949e;
+        --accent-blue: #58a6ff;
+        --accent-green: #3fb950;
+        --accent-red: #f85149;
+        --accent-yellow: #f1c40f;
+    }
+}
+
+/* ================================
+   15. 安全性增強
+================================ */
+.sensitive-data {
+    filter: blur(5px);
+    transition: filter 0.3s ease;
+}
+
+.sensitive-data:focus,
+.sensitive-data:hover {
+    filter: blur(0);
+}
+
+/* ================================
+   16. 性能優化提示
+================================ */
+.perf-tip {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    font-size: 11px;
+    color: #484f58;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.perf-tip.loading::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: #f1c40f;
+    border-radius: 50%;
+    animation: pulse 1s infinite;
+}
+
+/* ================================
+   17. 卡片分類標籤
+================================ */
+.category-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.category-tag.tech {
+    background: rgba(88, 166, 255, 0.2);
+    color: #58a6ff;
+}
+
+.category-tag.fund {
+    background: rgba(163, 113, 247, 0.2);
+    color: #a371f7;
+}
+
+.category-tag.chip {
+    background: rgba(241, 196, 15, 0.2);
+    color: #f1c40f;
+}
+
+.category-tag.ai {
+    background: rgba(46, 160, 67, 0.2);
+    color: #3fb950;
+}
+
+/* ================================
+   18. 進度條增強
+================================ */
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: #21262d;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #58a6ff, #3fb950);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+/* ================================
+   19. 工具提示
+================================ */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #21262d;
+    color: #c9d1d9;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 100;
+    border: 1px solid #30363d;
+    margin-bottom: 8px;
+}

@@ -1,9 +1,47 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+*.pyo
+.Python
 .venv/
 venv/
 ENV/
 env/
 .env
+*.egg-info/
+
+# Logs
+*.log
+error_log.txt
+access_log.txt
+out.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Keys (但保留模板)
+keys.txt
+
+# Test/Debug
+debug_*.json
+test_*.py
+test_res*.json
+playwright_test.py
+
+# Build
+dist/
+build/
+*.egg
+
+# Temporary
+temp_*.txt
+*.tmp
