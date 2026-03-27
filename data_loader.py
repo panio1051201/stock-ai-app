@@ -5,18 +5,35 @@ import re
 from cachetools import cached, TTLCache
 import time
 import requests
+import yfinance as yf  # 備用方案
 
 # --- 引入錯誤處理模組 ---
 import error_handler as eh
 
 # --- 設定 FinMind API Token ---
 import os
-API_TOKEN = os.environ.get("FINMIND_API_TOKEN", "") 
+API_TOKEN = os.environ.get("FINMIND_API_TOKEN", "")
 
 # 全域變數
 STOCK_MAP_NAME_TO_ID = {}
 STOCK_MAP_ID_TO_NAME = {}
 CATEGORY_MAP = {}
+
+
+def fetch_data_yf(stock_code, days=5):
+    """使用 yfinance 取得股價（備用方案）"""
+    try:
+        ticker = yf.Ticker(f"{stock_code}.TW")
+        df = ticker.history(period=f"{days}d")
+        if df.empty:
+            return None
+        df = df.rename(columns={'Open': 'Open', 'High': 'High', 'Low': 'Low', 'Close': 'Close', 'Volume': 'Volume'})
+        df.index = pd.to_datetime(df.index).tz_localize(None)
+        return df
+    except Exception as e:
+        eh.logger.error("YFinance", f"取得 {stock_code} 失敗: {e}")
+        return None
+
 
 def init_stock_list():
     global STOCK_MAP_NAME_TO_ID, STOCK_MAP_ID_TO_NAME, CATEGORY_MAP
@@ -110,7 +127,7 @@ def get_stock_name(input_str):
 
     if input_str in STOCK_MAP_NAME_TO_ID:
         return input_str, STOCK_MAP_NAME_TO_ID[input_str]
-        
+
     for name, code in STOCK_MAP_NAME_TO_ID.items():
         if input_str in name: return name, code
 
@@ -118,7 +135,7 @@ def get_stock_name(input_str):
 
 @cached(cache=TTLCache(maxsize=500, ttl=3600))
 def fetch_data(stock_code, days=730):
-    """ 抓取股價 (Price) - 增強版 """
+    """ 抓取股價 (Price) - 支援 FinMind + yfinance 備用 """
 
     # 熔斷器保護
     def _fetch():
@@ -127,49 +144,55 @@ def fetch_data(stock_code, days=730):
              match = re.match(r"(\d+)", code)
              code = match.group(1) if match else code
 
+        # 先嘗試 FinMind
         dl = DataLoader()
         if API_TOKEN:
             dl.login_by_token(api_token=API_TOKEN)
-            eh.logger.info("FinMind", f"Token 登入成功")
 
         start_date = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime('%Y-%m-%d')
         eh.logger.info("FinMind", f"下載股價: {code} from {start_date} ...")
 
-        df = dl.taiwan_stock_daily(stock_id=code, start_date=start_date)
+        try:
+            df = dl.taiwan_stock_daily(stock_id=code, start_date=start_date)
 
-        eh.logger.info("FinMind", f"原始回應: {type(df)}, 長度: {len(df) if df is not None else 'None'}")
+            if df is not None and not df.empty:
+                eh.logger.info("FinMind", f"FinMind 成功取得 {len(df)} 筆資料")
+                df = df.rename(columns={'date': 'Date', 'open': 'Open', 'max': 'High', 'min': 'Low', 'close': 'Close', 'Trading_Volume': 'Volume'})
+                df['Date'] = pd.to_datetime(df['Date'])
+                df.set_index('Date', inplace=True)
+                for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                return df, df['Close'].iloc[-1]
+        except Exception as e:
+            eh.logger.error("FinMind", f"FinMind 失敗: {e}")
 
-        if df is None or df.empty:
-            eh.logger.warning("FinMind", f"股票 {code} 無資料，嘗試無 Token...")
-            # 嘗試不用 Token
-            dl2 = DataLoader()
-            df = dl2.taiwan_stock_daily(stock_id=code, start_date=start_date)
-            eh.logger.info("FinMind", f"無 Token 回應: {len(df) if df is not None and not df.empty else '仍是空'}")
+        # Fallback: 使用 yfinance
+        eh.logger.info("YFinance", f"嘗試 yfinance取得 {code}...")
+        try:
+            ticker = yf.Ticker(f"{code}.TW")
+            df = ticker.history(period=f"{min(days, 60)}d")
+            if df is not None and not df.empty:
+                eh.logger.info("YFinance", f"yfinance 成功取得 {len(df)} 筆資料")
+                df = df.rename(columns={'Open': 'Open', 'High': 'High', 'Low': 'Low', 'Close': 'Close', 'Volume': 'Volume'})
+                df.index = pd.to_datetime(df.index).tz_localize(None)
+                return df, df['Close'].iloc[-1]
+        except Exception as e:
+            eh.logger.error("YFinance", f"yfinance 也失敗: {e}")
 
-        if df is None or df.empty:
-            eh.logger.warning("FinMind", f"股票 {code} 最終無資料")
-            return pd.DataFrame(), 0
-
-        df = df.rename(columns={'date': 'Date', 'open': 'Open', 'max': 'High', 'min': 'Low', 'close': 'Close', 'Trading_Volume': 'Volume'})
-        df['Date'] = pd.to_datetime(df['Date'])
-        df.set_index('Date', inplace=True)
-        for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-
-        eh.logger.success("FinMind", f"股票 {code} 取得 {len(df)} 筆資料")
-        return df, df['Close'].iloc[-1]
+        return pd.DataFrame(), 0
 
     try:
-        # 使用熔斷器
         result = eh.circuit_breakers['finmind'].call(_fetch)
         return result
 
     except eh.CircuitOpenError:
-        eh.logger.warning("FinMind", "API 熔斷中，使用快取資料")
+        eh.logger.warning("FinMind", "API 熔斷中")
         return pd.DataFrame(), 0
 
     except Exception as e:
-        # clean_code 可能未定義，使用 stock_code 代替
+        code_str = str(stock_code).replace('.TW', '').strip()
+        eh.logger.error("DataFetch", f"取得 {code_str} 失敗: {e}")
+        return pd.DataFrame(), 0
         code_str = str(stock_code).replace('.TW', '').strip()
         eh.logger.error("FinMind", f"下載股價失敗: {code_str}", {'error': str(e)})
         return pd.DataFrame(), 0
