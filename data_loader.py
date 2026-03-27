@@ -119,46 +119,48 @@ def get_stock_name(input_str):
 @cached(cache=TTLCache(maxsize=500, ttl=3600))
 def fetch_data(stock_code, days=730):
     """ 抓取股價 (Price) - 增強版 """
-    
+
     # 熔斷器保護
     def _fetch():
-        clean_code = str(stock_code).replace('.TW', '').strip()
-        if not clean_code.isdigit():
-             match = re.match(r"(\d+)", clean_code)
-             clean_code = match.group(1) if match else clean_code
+        code = str(stock_code).replace('.TW', '').strip()
+        if not code.isdigit():
+             match = re.match(r"(\d+)", code)
+             code = match.group(1) if match else code
 
         dl = DataLoader()
         if API_TOKEN: dl.login_by_token(api_token=API_TOKEN)
-        
+
         start_date = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime('%Y-%m-%d')
-        eh.logger.info("FinMind", f"下載股價: {clean_code} ...")
-        
-        df = dl.taiwan_stock_daily(stock_id=clean_code, start_date=start_date)
-        
-        if df.empty: 
-            eh.logger.warning("FinMind", f"股票 {clean_code} 無資料")
+        eh.logger.info("FinMind", f"下載股價: {code} ...")
+
+        df = dl.taiwan_stock_daily(stock_id=code, start_date=start_date)
+
+        if df.empty:
+            eh.logger.warning("FinMind", f"股票 {code} 無資料")
             return pd.DataFrame(), 0
-            
+
         df = df.rename(columns={'date': 'Date', 'open': 'Open', 'max': 'High', 'min': 'Low', 'close': 'Close', 'Trading_Volume': 'Volume'})
         df['Date'] = pd.to_datetime(df['Date'])
         df.set_index('Date', inplace=True)
         for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
             df[col] = pd.to_numeric(df[col], errors='coerce')
-            
-        eh.logger.success("FinMind", f"股票 {clean_code} 取得 {len(df)} 筆資料")
+
+        eh.logger.success("FinMind", f"股票 {code} 取得 {len(df)} 筆資料")
         return df, df['Close'].iloc[-1]
-    
+
     try:
         # 使用熔斷器
         result = eh.circuit_breakers['finmind'].call(_fetch)
         return result
-        
+
     except eh.CircuitOpenError:
         eh.logger.warning("FinMind", "API 熔斷中，使用快取資料")
         return pd.DataFrame(), 0
-        
+
     except Exception as e:
-        eh.logger.error("FinMind", f"下載股價失敗: {clean_code}", {'error': str(e)})
+        # clean_code 可能未定義，使用 stock_code 代替
+        code_str = str(stock_code).replace('.TW', '').strip()
+        eh.logger.error("FinMind", f"下載股價失敗: {code_str}", {'error': str(e)})
         return pd.DataFrame(), 0
 
 @cached(cache=TTLCache(maxsize=500, ttl=43200))
