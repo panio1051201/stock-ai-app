@@ -128,15 +128,26 @@ def fetch_data(stock_code, days=730):
              code = match.group(1) if match else code
 
         dl = DataLoader()
-        if API_TOKEN: dl.login_by_token(api_token=API_TOKEN)
+        if API_TOKEN:
+            dl.login_by_token(api_token=API_TOKEN)
+            eh.logger.info("FinMind", f"Token 登入成功")
 
         start_date = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime('%Y-%m-%d')
-        eh.logger.info("FinMind", f"下載股價: {code} ...")
+        eh.logger.info("FinMind", f"下載股價: {code} from {start_date} ...")
 
         df = dl.taiwan_stock_daily(stock_id=code, start_date=start_date)
 
-        if df.empty:
-            eh.logger.warning("FinMind", f"股票 {code} 無資料")
+        eh.logger.info("FinMind", f"原始回應: {type(df)}, 長度: {len(df) if df is not None else 'None'}")
+
+        if df is None or df.empty:
+            eh.logger.warning("FinMind", f"股票 {code} 無資料，嘗試無 Token...")
+            # 嘗試不用 Token
+            dl2 = DataLoader()
+            df = dl2.taiwan_stock_daily(stock_id=code, start_date=start_date)
+            eh.logger.info("FinMind", f"無 Token 回應: {len(df) if df is not None and not df.empty else '仍是空'}")
+
+        if df is None or df.empty:
+            eh.logger.warning("FinMind", f"股票 {code} 最終無資料")
             return pd.DataFrame(), 0
 
         df = df.rename(columns={'date': 'Date', 'open': 'Open', 'max': 'High', 'min': 'Low', 'close': 'Close', 'Trading_Volume': 'Volume'})
