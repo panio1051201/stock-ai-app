@@ -1413,6 +1413,18 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ code, access_code: accessCode })
                     });
+
+                    // 檢查 HTTP 狀態碼
+                    if (!res.ok) {
+                        throw new Error(`伺服器錯誤 (${res.status})`);
+                    }
+
+                    // 檢查 Content-Type
+                    const contentType = res.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error("伺服器回應格式錯誤");
+                    }
+
                     const data = await res.json();
                     if (data.error) { alert(data.error); return; }
 
@@ -1420,7 +1432,8 @@
                     renderUI({ ...data, result: clientResult, chart: { dates: data.ohlcv.date, prices: data.ohlcv.close } }, type);
                     return;
                 } catch (e) {
-                    console.error("客戶端計算失敗，切換回伺服器端", e);
+                    console.error("客戶端計算失敗:", e);
+                    alert("取得資料失敗: " + e.message);
                 } finally {
                     document.getElementById('loading').style.display = 'none';
                 }
@@ -1433,13 +1446,34 @@
                     body: JSON.stringify({ code, type, buy_price: buyPrice, access_code: accessCode })
                 });
 
+                // 檢查 HTTP 狀態碼
+                if (!res.ok) {
+                    throw new Error(`伺服器錯誤 (${res.status}): ${res.statusText}`);
+                }
+
+                // 檢查 Content-Type 是否為 JSON
+                const contentType = res.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await res.text();
+                    console.error("非 JSON 回應:", text.substring(0, 500));
+                    throw new Error("伺服器回應格式錯誤，請稍後再試");
+                }
+
                 const data = await res.json();
                 if (data.error) { alert(data.error); return; }
 
                 renderUI(data, type);
 
             } catch (e) {
-                alert("連線錯誤: " + e);
+                // 更詳細的錯誤訊息
+                let errorMsg = "連線錯誤: " + e.message;
+                if (e.message.includes("Failed to fetch") || e.message.includes("NetworkError")) {
+                    errorMsg = "網路連線失敗，請檢查網路後再試";
+                } else if (e.message.includes("SyntaxError") || e.message.includes("Unexpected")) {
+                    errorMsg = "資料解析錯誤，伺服器可能忙碌中，請稍後再試";
+                }
+                alert(errorMsg);
+                console.error("API 錯誤詳情:", e);
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
@@ -1768,6 +1802,17 @@
                         access_code: accessCode
                     })
                 });
+
+                // 檢查 HTTP 狀態
+                if (!rawRes.ok) {
+                    throw new Error(`伺服器錯誤 (${rawRes.status})`);
+                }
+
+                const contentType = rawRes.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error("回傳格式錯誤");
+                }
+
                 const rawData = await rawRes.json();
                 if (rawData.error) throw new Error(rawData.error);
 
@@ -2005,16 +2050,28 @@
         async function loadMarketOverview() {
             try {
                 const response = await fetch('/api/market_overview');
+
+                // 檢查 HTTP 狀態
+                if (!response.ok) {
+                    throw new Error(`伺服器錯誤 (${response.status})`);
+                }
+
+                // 檢查 Content-Type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error("回傳格式錯誤");
+                }
+
                 const data = await response.json();
-                
+
                 if (data.symbol) {
                     document.getElementById('market-index').textContent = data.price || '--';
                     const change = data.change || 0;
                     const changePercent = data.change_percent || 0;
-                    
-                    document.getElementById('market-change').textContent = 
+
+                    document.getElementById('market-change').textContent =
                         `${change >= 0 ? '+' : ''}${change} (${changePercent >= 0 ? '+' : ''}${changePercent}%)`;
-                    
+
                     const badge = document.getElementById('market-change-badge');
                     if (change >= 0) {
                         badge.className = 'market-change market-up';
@@ -2072,8 +2129,22 @@
             for (const stock of watchlist) {
                 try {
                     const response = await fetch(`/api/price/${stock.code}`);
+
+                    // 檢查 HTTP 狀態
+                    if (!response.ok) {
+                        console.error(`股票 ${stock.code} 取得失敗`);
+                        continue;
+                    }
+
+                    // 檢查 Content-Type
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        console.error(`股票 ${stock.code} 回傳格式錯誤`);
+                        continue;
+                    }
+
                     const data = await response.json();
-                    
+
                     const changePercent = parseFloat(data.change_percent) || 0;
                     const changeClass = changePercent >= 0 ? 'price-up' : 'price-down';
                     const price = data.price || '--';
@@ -2140,14 +2211,28 @@
             for (const stock of newbieStocks) {
                 try {
                     const response = await fetch(`/api/price/${stock.code}`);
+
+                    // 檢查 HTTP 狀態
+                    if (!response.ok) {
+                        console.error(`新手股票 ${stock.code} 取得失敗`);
+                        continue;
+                    }
+
+                    // 檢查 Content-Type
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        console.error(`新手股票 ${stock.code} 回傳格式錯誤`);
+                        continue;
+                    }
+
                     const data = await response.json();
-                    
+
                     if (data.price) {
                         const priceEl = document.getElementById(`newbie-${stock.code}-price`);
                         const changeEl = document.getElementById(`newbie-${stock.code}-change`);
-                        
+
                         if (priceEl) priceEl.textContent = data.price;
-                        
+
                         if (changeEl) {
                             // 將字串轉為數字再格式化，避免 ++ 問題
                             const changePercent = parseFloat(data.change_percent) || 0;
