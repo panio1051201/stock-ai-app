@@ -666,24 +666,27 @@ def get_simple_price(symbol):
         # 處理代碼格式
         if not symbol.isdigit():
             return jsonify({'error': 'Invalid symbol'}), 400
-        
+
         # 取得完整代碼
         try:
             name, full_code = data_loader.get_stock_name(symbol)
-        except:
-            full_code = symbol
-            
+        except Exception as e:
+            return jsonify({'error': f'Stock name lookup failed: {str(e)}'}), 500
+
         # 取得股價
-        df, price = data_loader.fetch_data(full_code, days=5)
-        
+        try:
+            df, price = data_loader.fetch_data(full_code, days=5)
+        except Exception as e:
+            return jsonify({'error': f'Fetch data failed: {str(e)}', 'symbol': symbol, 'full_code': full_code}), 500
+
         if df is None or df.empty:
-            return jsonify({'error': 'No data'}), 404
-        
+            return jsonify({'error': 'No data for this stock', 'symbol': symbol, 'full_code': full_code}), 404
+
         current_price = float(df['Close'].iloc[-1])
         prev_price = float(df['Close'].iloc[-2]) if len(df) > 1 else current_price
         change = current_price - prev_price
         change_percent = (change / prev_price) * 100 if prev_price > 0 else 0
-        
+
         return jsonify({
             'symbol': symbol,
             'name': name,
@@ -691,7 +694,7 @@ def get_simple_price(symbol):
             'change': f"{change:+.2f}",
             'change_percent': f"{change_percent:+.2f}"
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
