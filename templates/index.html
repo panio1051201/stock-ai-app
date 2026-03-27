@@ -283,6 +283,27 @@
             border-bottom: none;
         }
 
+        .watchlist-item .stock-info {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .delete-btn {
+            background: rgba(248, 81, 73, 0.2);
+            border: none;
+            color: #f85149;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 0.8rem;
+        }
+
+        .delete-btn:hover {
+            background: rgba(248, 81, 73, 0.4);
+        }
+
         .stock-info {
             display: flex;
             flex-direction: column;
@@ -1049,29 +1070,9 @@
                 </button>
             </div>
             <div id="watchlist-container">
-                <div class="watchlist-item">
-                    <div class="stock-info">
-                        <span class="stock-code">0050</span>
-                        <span class="stock-name-simple">元大台灣50</span>
-                    </div>
-                    <div class="stock-price-info">
-                        <span class="stock-price" id="watch-0050-price">---</span>
-                        <span class="stock-change-simple price-up" id="watch-0050-change">---</span>
-                    </div>
-                </div>
-                <div class="watchlist-item">
-                    <div class="stock-info">
-                        <span class="stock-code">2330</span>
-                        <span class="stock-name-simple">台積電</span>
-                    </div>
-                    <div class="stock-price-info">
-                        <span class="stock-price" id="watch-2330-price">---</span>
-                        <span class="stock-change-simple price-up" id="watch-2330-change">---</span>
-                    </div>
-                </div>
-                <div class="watchlist-item">
-                    <div class="stock-info">
-                        <span class="stock-code">2317</span>
+                <!-- 動態產生 -->
+            </div>
+        </div>
                         <span class="stock-name-simple">鴻海</span>
                     </div>
                     <div class="stock-price-info">
@@ -2016,32 +2017,104 @@
             }
         }
 
-        // 載入口袋名單股價
-        async function loadWatchlist() {
-            const watchlist = ['0050', '2330', '2317'];
+        // ========== 口袋名單管理 ==========
+
+        // 預設口袋名單
+        const DEFAULT_WATCHLIST = [
+            { code: '0050', name: '元大台灣50' },
+            { code: '2330', name: '台積電' },
+            { code: '2317', name: '鴻海' }
+        ];
+
+        // 取得口袋名單（從 localStorage）
+        function getWatchlist() {
+            try {
+                const saved = localStorage.getItem('stock_watchlist');
+                if (saved) {
+                    return JSON.parse(saved);
+                }
+            } catch (e) {}
+            return [...DEFAULT_WATCHLIST];
+        }
+
+        // 儲存口袋名單
+        function saveWatchlist(list) {
+            try {
+                localStorage.setItem('stock_watchlist', JSON.stringify(list));
+            } catch (e) {}
+        }
+
+        // 渲染口袋名單
+        async function renderWatchlist() {
+            const container = document.getElementById('watchlist-container');
+            const watchlist = getWatchlist();
             
-            for (const code of watchlist) {
+            if (watchlist.length === 0) {
+                container.innerHTML = '<div style="text-align:center;color:#8b949e;padding:20px;">尚無追蹤股票<br><small>點擊上方「加入」新增</small></div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            for (const stock of watchlist) {
                 try {
-                    const response = await fetch(`/api/price/${code}`);
+                    const response = await fetch(`/api/price/${stock.code}`);
                     const data = await response.json();
                     
-                    if (data.price) {
-                        const priceEl = document.getElementById(`watch-${code}-price`);
-                        const changeEl = document.getElementById(`watch-${code}-change`);
-                        
-                        if (priceEl) priceEl.textContent = data.price;
-                        
-                        if (changeEl) {
-                            // 將字串轉為數字再格式化，避免 ++ 問題
-                            const changePercent = parseFloat(data.change_percent) || 0;
-                            changeEl.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
-                            changeEl.className = `stock-change-simple ${changePercent >= 0 ? 'price-up' : 'price-down'}`;
-                        }
-                    }
+                    const changePercent = parseFloat(data.change_percent) || 0;
+                    const changeClass = changePercent >= 0 ? 'price-up' : 'price-down';
+                    const price = data.price || '--';
+                    
+                    container.innerHTML += `
+                        <div class="watchlist-item" id="watch-item-${stock.code}">
+                            <div class="stock-info">
+                                <span class="stock-code">${stock.code}</span>
+                                <span class="stock-name-simple">${stock.name || data.name || stock.code}</span>
+                            </div>
+                            <div class="stock-price-info">
+                                <span class="stock-price">${price}</span>
+                                <span class="stock-change-simple ${changeClass}">${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%</span>
+                            </div>
+                            <button class="delete-btn" onclick="removeStock('${stock.code}')" title="移除">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
                 } catch (e) {
-                    console.log(`Watchlist ${code} error:`, e);
+                    console.log(`Render watchlist ${stock.code} error:`, e);
                 }
             }
+        }
+
+        // 載入口袋名單股價
+        async function loadWatchlist() {
+            await renderWatchlist();
+        }
+
+        // 加入股票
+        function addStock(code, name) {
+            const watchlist = getWatchlist();
+            
+            // 檢查是否已存在
+            if (watchlist.some(s => s.code === code)) {
+                alert(` ${code} 已在名單中！`);
+                return false;
+            }
+            
+            watchlist.push({ code, name });
+            saveWatchlist(watchlist);
+            renderWatchlist();
+            return true;
+        }
+
+        // 移除股票
+        function removeStock(code) {
+            if (!confirm(`確定要移除 ${code} 嗎？`)) return;
+            
+            let watchlist = getWatchlist();
+            watchlist = watchlist.filter(s => s.code !== code);
+            saveWatchlist(watchlist);
+            renderWatchlist();
         }
 
         // 載入新手推薦股票
@@ -2109,7 +2182,21 @@
         function showAddStockModal() {
             const code = prompt('請輸入股票代碼（例如：2303）');
             if (code && code.length >= 4) {
-                alert(`已將 ${code} 加入口袋名單！\n（實際功能需要會員系統）`);
+                // 嘗試取得股票名稱
+                fetch(`/api/price/${code}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        const name = data.name || code;
+                        if (addStock(code, name)) {
+                            alert(`✅ 已將 ${code} ${name} 加入口袋名單！`);
+                        }
+                    })
+                    .catch(() => {
+                        // 如果無法取得名稱，仍然加入
+                        if (addStock(code, code)) {
+                            alert(`✅ 已將 ${code} 加入口袋名單！`);
+                        }
+                    });
             }
         }
 
