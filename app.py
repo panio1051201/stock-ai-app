@@ -593,6 +593,109 @@ def proxy_retrolyze():
          return jsonify({'error': str(e)}), 500
 
 
+# ========== 簡單模式 API ==========
+
+@app.route('/api/market_overview', methods=['GET'])
+def market_overview():
+    """取得大盤概況"""
+    try:
+        # 取得加權指數 (.TWII)
+        try:
+            df, price = data_loader.fetch_data("^TWII", days=5)
+            
+            if df is not None and not df.empty:
+                current_price = float(df['Close'].iloc[-1])
+                prev_price = float(df['Close'].iloc[-2]) if len(df) > 1 else current_price
+                change = current_price - prev_price
+                change_percent = (change / prev_price) * 100 if prev_price > 0 else 0
+                
+                return jsonify({
+                    'symbol': '^TWII',
+                    'name': '加權指數',
+                    'price': f"{current_price:,.0f}",
+                    'change': f"{change:+,.0f}",
+                    'change_percent': f"{change_percent:+,.2f}"
+                })
+        except Exception as e:
+            print(f"[Market Overview] TWII error: {e}")
+        
+        # Fallback: 取得幾檔大型股平均
+        try:
+            big_stocks = ['2330', '2317', '2303']  # 台積電、鴻海、聯電
+            total_change = 0
+            
+            for code in big_stocks:
+                try:
+                    df, price = data_loader.fetch_data(code, days=2)
+                    if df is not None and not df.empty:
+                        current = float(df['Close'].iloc[-1])
+                        prev = float(df['Close'].iloc[-2]) if len(df) > 1 else current
+                        change_pct = ((current - prev) / prev) * 100 if prev > 0 else 0
+                        total_change += change_pct
+                except:
+                    pass
+            
+            avg_change = total_change / len(big_stocks) if big_stocks else 0
+            
+            return jsonify({
+                'symbol': 'APPROX',
+                'name': '大盤概況（估算）',
+                'price': '請查看個股',
+                'change': f"{avg_change:+,.2f}",
+                'change_percent': f"{avg_change:+,.2f}"
+            })
+        except Exception as e:
+            print(f"[Market Overview] Fallback error: {e}")
+        
+        return jsonify({
+            'symbol': 'N/A',
+            'name': '無法取得',
+            'price': '--',
+            'change': '0',
+            'change_percent': '0'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/price/<symbol>', methods=['GET'])
+def get_simple_price(symbol):
+    """取得個股簡單價格資訊"""
+    try:
+        # 處理代碼格式
+        if not symbol.isdigit():
+            return jsonify({'error': 'Invalid symbol'}), 400
+        
+        # 取得完整代碼
+        try:
+            name, full_code = data_loader.get_stock_name(symbol)
+        except:
+            full_code = symbol
+            
+        # 取得股價
+        df, price = data_loader.fetch_data(full_code, days=5)
+        
+        if df is None or df.empty:
+            return jsonify({'error': 'No data'}), 404
+        
+        current_price = float(df['Close'].iloc[-1])
+        prev_price = float(df['Close'].iloc[-2]) if len(df) > 1 else current_price
+        change = current_price - prev_price
+        change_percent = (change / prev_price) * 100 if prev_price > 0 else 0
+        
+        return jsonify({
+            'symbol': symbol,
+            'name': name,
+            'price': f"{current_price:.2f}",
+            'change': f"{change:+.2f}",
+            'change_percent': f"{change_percent:+.2f}"
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     import sys
     import io

@@ -98,6 +98,224 @@
             margin-bottom: 20px;
         }
 
+        /* --- 2.1 簡單模式 --- */
+        .simple-mode-toggle {
+            width: 95%;
+            max-width: 600px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #30363d;
+            background: #21262d;
+            color: #8b949e;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .mode-btn.active {
+            background: #30363d;
+            color: #fff;
+            border-color: #58a6ff;
+        }
+
+        .mode-btn:hover {
+            background: #30363d;
+        }
+
+        /* 簡單模式面板 */
+        .simple-mode {
+            width: 95%;
+            max-width: 600px;
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .simple-mode.active {
+            display: block;
+        }
+
+        /* 大盤概況卡片 */
+        .market-overview {
+            background: linear-gradient(135deg, #161b22, #21262d);
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .market-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .market-title {
+            font-size: 1rem;
+            color: #8b949e;
+        }
+
+        .market-index {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .market-change {
+            font-size: 1rem;
+            padding: 5px 10px;
+            border-radius: 6px;
+        }
+
+        .market-up {
+            background: rgba(46, 160, 67, 0.2);
+            color: #3fb950;
+        }
+
+        .market-down {
+            background: rgba(218, 54, 51, 0.2);
+            color: #f85149;
+        }
+
+        /* 簡單建議卡片 */
+        .simple-advice {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .advice-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .advice-text {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .advice-desc {
+            font-size: 0.9rem;
+            color: #8b949e;
+        }
+
+        .advice-buy {
+            color: #3fb950;
+        }
+
+        .advice-hold {
+            color: #e3b341;
+        }
+
+        .advice-sell {
+            color: #f85149;
+        }
+
+        /* 口袋名單 */
+        .watchlist {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .watchlist-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .watchlist-title {
+            font-size: 1rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .add-stock-btn {
+            background: #238636;
+            border: none;
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .add-stock-btn:hover {
+            background: #2ea043;
+        }
+
+        .watchlist-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #21262d;
+        }
+
+        .watchlist-item:last-child {
+            border-bottom: none;
+        }
+
+        .stock-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stock-code {
+            font-size: 1rem;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .stock-name-simple {
+            font-size: 0.8rem;
+            color: #8b949e;
+        }
+
+        .stock-price-info {
+            text-align: right;
+        }
+
+        .stock-price {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .stock-change-simple {
+            font-size: 0.85rem;
+        }
+
+        .price-up {
+            color: #3fb950;
+        }
+
+        .price-down {
+            color: #f85149;
+        }
+
         .menu-item {
             background-color: #21262d;
             border: 1px solid #30363d;
@@ -781,6 +999,116 @@
         </div>
         <div class="menu-item beginner" onclick="showPriceAlerts()" style="border-color: #f85149;">
             <i class="fa-solid fa-bell" style="color: #f85149;"></i><span>價格警報</span>
+        </div>
+    </div>
+
+    <!-- 簡單模式開關 -->
+    <div class="simple-mode-toggle">
+        <button class="mode-btn" id="simple-mode-btn" onclick="showSimpleMode()">
+            <i class="fa-solid fa-baby"></i> 簡單模式
+        </button>
+        <button class="mode-btn" id="pro-mode-btn" onclick="showProMode()">
+            <i class="fa-solid fa-chart-line"></i> 進階模式
+        </button>
+    </div>
+
+    <!-- 簡單模式面板 -->
+    <div class="simple-mode" id="simple-mode">
+        <!-- 大盤概況 -->
+        <div class="market-overview">
+            <div class="market-header">
+                <span class="market-title">加權指數</span>
+                <span id="market-change-badge" class="market-change market-up">載入中...</span>
+            </div>
+            <div class="market-header">
+                <span id="market-index" class="market-index">---</span>
+                <span id="market-change" class="market-change" style="font-size: 1rem;">---</span>
+            </div>
+        </div>
+
+        <!-- 簡單建議 -->
+        <div class="simple-advice" id="simple-advice">
+            <div class="advice-icon" id="advice-icon">📊</div>
+            <div class="advice-text advice-hold" id="advice-text">載入中...</div>
+            <div class="advice-desc" id="advice-desc">正在分析市場狀況...</div>
+        </div>
+
+        <!-- 口袋名單 -->
+        <div class="watchlist">
+            <div class="watchlist-header">
+                <span class="watchlist-title">
+                    <i class="fa-solid fa-star"></i> 我的口袋名單
+                </span>
+                <button class="add-stock-btn" onclick="showAddStockModal()">
+                    <i class="fa-solid fa-plus"></i> 加入
+                </button>
+            </div>
+            <div id="watchlist-container">
+                <div class="watchlist-item">
+                    <div class="stock-info">
+                        <span class="stock-code">0050</span>
+                        <span class="stock-name-simple">元大台灣50</span>
+                    </div>
+                    <div class="stock-price-info">
+                        <span class="stock-price" id="watch-0050-price">---</span>
+                        <span class="stock-change-simple price-up" id="watch-0050-change">---</span>
+                    </div>
+                </div>
+                <div class="watchlist-item">
+                    <div class="stock-info">
+                        <span class="stock-code">2330</span>
+                        <span class="stock-name-simple">台積電</span>
+                    </div>
+                    <div class="stock-price-info">
+                        <span class="stock-price" id="watch-2330-price">---</span>
+                        <span class="stock-change-simple price-up" id="watch-2330-change">---</span>
+                    </div>
+                </div>
+                <div class="watchlist-item">
+                    <div class="stock-info">
+                        <span class="stock-code">2317</span>
+                        <span class="stock-name-simple">鴻海</span>
+                    </div>
+                    <div class="stock-price-info">
+                        <span class="stock-price" id="watch-2317-price">---</span>
+                        <span class="stock-change-simple price-up" id="watch-2317-change">---</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 新手推薦股票 -->
+        <div class="watchlist">
+            <div class="watchlist-header">
+                <span class="watchlist-title">
+                    <i class="fa-solid fa-lightbulb"></i> 新手推薦好股
+                </span>
+                <button class="add-stock-btn" onclick="showNewbieRadar()" style="background: #a855f7;">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> 查看更多
+                </button>
+            </div>
+            <div id="newbie-stocks-container">
+                <div class="watchlist-item">
+                    <div class="stock-info">
+                        <span class="stock-code">0056</span>
+                        <span class="stock-name-simple">元大高股息</span>
+                    </div>
+                    <div class="stock-price-info">
+                        <span class="stock-price" id="newbie-0056-price">---</span>
+                        <span class="stock-change-simple price-up" id="newbie-0056-change">---</span>
+                    </div>
+                </div>
+                <div class="watchlist-item">
+                    <div class="stock-info">
+                        <span class="stock-code">2884</span>
+                        <span class="stock-name-simple">玉山金</span>
+                    </div>
+                    <div class="stock-price-info">
+                        <span class="stock-price" id="newbie-2884-price">---</span>
+                        <span class="stock-change-simple price-up" id="newbie-2884-change">---</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1614,7 +1942,185 @@
             });
         }
 
-        // --- PWA Service Worker Registration ---
+        // ========== 簡單模式 ==========
+
+        // 簡單模式狀態
+        let simpleModeActive = false;
+
+        // 顯示簡單模式
+        function showSimpleMode() {
+            simpleModeActive = true;
+            document.getElementById('simple-mode').classList.add('active');
+            document.getElementById('simple-mode-btn').classList.add('active');
+            document.getElementById('pro-mode-btn').classList.remove('active');
+            document.querySelector('.grid-menu').style.display = 'none';
+            document.querySelector('.search-area').style.display = 'none';
+            
+            // 載入數據
+            loadSimpleModeData();
+        }
+
+        // 顯示進階模式
+        function showProMode() {
+            simpleModeActive = false;
+            document.getElementById('simple-mode').classList.remove('active');
+            document.getElementById('simple-mode-btn').classList.remove('active');
+            document.getElementById('pro-mode-btn').classList.add('active');
+            document.querySelector('.grid-menu').style.display = 'grid';
+            document.querySelector('.search-area').style.display = 'flex';
+        }
+
+        // 載入簡單模式數據
+        async function loadSimpleModeData() {
+            // 載入大盤數據
+            await loadMarketOverview();
+            
+            // 載入口袋名單
+            await loadWatchlist();
+            
+            // 載入新手推薦
+            await loadNewbieStocks();
+        }
+
+        // 載入大盤概況
+        async function loadMarketOverview() {
+            try {
+                const response = await fetch('/api/market_overview');
+                const data = await response.json();
+                
+                if (data.symbol) {
+                    document.getElementById('market-index').textContent = data.price || '--';
+                    const change = data.change || 0;
+                    const changePercent = data.change_percent || 0;
+                    
+                    document.getElementById('market-change').textContent = 
+                        `${change >= 0 ? '+' : ''}${change} (${changePercent >= 0 ? '+' : ''}${changePercent}%)`;
+                    
+                    const badge = document.getElementById('market-change-badge');
+                    if (change >= 0) {
+                        badge.className = 'market-change market-up';
+                        badge.textContent = '▲ 漲';
+                    } else {
+                        badge.className = 'market-change market-down';
+                        badge.textContent = '▼ 跌';
+                    }
+                }
+            } catch (e) {
+                console.log('Market overview error:', e);
+                document.getElementById('market-index').textContent = '載入失敗';
+            }
+        }
+
+        // 載入口袋名單股價
+        async function loadWatchlist() {
+            const watchlist = ['0050', '2330', '2317'];
+            
+            for (const code of watchlist) {
+                try {
+                    const response = await fetch(`/api/price/${code}`);
+                    const data = await response.json();
+                    
+                    if (data.price) {
+                        const priceEl = document.getElementById(`watch-${code}-price`);
+                        const changeEl = document.getElementById(`watch-${code}-change`);
+                        
+                        if (priceEl) priceEl.textContent = data.price;
+                        
+                        if (changeEl) {
+                            const change = data.change || 0;
+                            const changePercent = data.change_percent || 0;
+                            changeEl.textContent = `${change >= 0 ? '+' : ''}${changePercent}%`;
+                            changeEl.className = `stock-change-simple ${change >= 0 ? 'price-up' : 'price-down'}`;
+                        }
+                    }
+                } catch (e) {
+                    console.log(`Watchlist ${code} error:`, e);
+                }
+            }
+        }
+
+        // 載入新手推薦股票
+        async function loadNewbieStocks() {
+            const newbieStocks = [
+                { code: '0056', name: '元大高股息' },
+                { code: '2884', name: '玉山金' }
+            ];
+            
+            for (const stock of newbieStocks) {
+                try {
+                    const response = await fetch(`/api/price/${stock.code}`);
+                    const data = await response.json();
+                    
+                    if (data.price) {
+                        const priceEl = document.getElementById(`newbie-${stock.code}-price`);
+                        const changeEl = document.getElementById(`newbie-${stock.code}-change`);
+                        
+                        if (priceEl) priceEl.textContent = data.price;
+                        
+                        if (changeEl) {
+                            const change = data.change || 0;
+                            const changePercent = data.change_percent || 0;
+                            changeEl.textContent = `${change >= 0 ? '+' : ''}${changePercent}%`;
+                            changeEl.className = `stock-change-simple ${change >= 0 ? 'price-up' : 'price-down'}`;
+                        }
+                    }
+                } catch (e) {
+                    console.log(`Newbie ${stock.code} error:`, e);
+                }
+            }
+            
+            // 產生簡單建議
+            generateSimpleAdvice();
+        }
+
+        // 產生簡單建議
+        function generateSimpleAdvice() {
+            const iconEl = document.getElementById('advice-icon');
+            const textEl = document.getElementById('advice-text');
+            const descEl = document.getElementById('advice-desc');
+            
+            // 簡單的邏輯：根據指數變化給建議
+            const marketChange = parseFloat(document.getElementById('market-change').textContent) || 0;
+            
+            if (marketChange > 1) {
+                iconEl.textContent = '📈';
+                textEl.textContent = '觀望為主';
+                textEl.className = 'advice-text advice-hold';
+                descEl.textContent = '大盤漲多，建議先觀望，不要追高';
+            } else if (marketChange < -1) {
+                iconEl.textContent = '📉';
+                textEl.textContent = '危機入市';
+                textEl.className = 'advice-text advice-buy';
+                descEl.textContent = '大盤跌低，可能是進場好時機';
+            } else {
+                iconEl.textContent = '⚖️';
+                textEl.textContent = '可以進場';
+                textEl.className = 'advice-text advice-buy';
+                descEl.textContent = '大盤穩定，適合分批買進好股票';
+            }
+        }
+
+        // 加入口袋名單（弹窗）
+        function showAddStockModal() {
+            const code = prompt('請輸入股票代碼（例如：2303）');
+            if (code && code.length >= 4) {
+                alert(`已將 ${code} 加入口袋名單！\n（實際功能需要會員系統）`);
+            }
+        }
+
+        // 新手雷達（弹窗）
+        function showNewbieRadar() {
+            alert('🚩 新手雷達功能\n\n推薦準則：\n• 股價 < 100 元\n• 成交量 > 1000 張\n• 穩定配息\n• 大型股（不易倒閉）\n\n即將推出！');
+        }
+
+        // 頁面載入時自動載入簡單模式（可選）
+        // window.addEventListener('load', () => {
+        //     if (window.innerWidth < 768) {
+        //         showSimpleMode();
+        //     }
+        // });
+
+        // ========== PWA Service Worker Registration ==========
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/static/sw.js')
