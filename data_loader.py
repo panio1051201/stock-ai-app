@@ -19,6 +19,135 @@ STOCK_MAP_NAME_TO_ID = {}
 STOCK_MAP_ID_TO_NAME = {}
 CATEGORY_MAP = {}
 
+# ========== 備援資料源 ==========
+
+def fetch_institutional_twse(stock_code, days=90):
+    """
+    使用台灣證交所 API 取得三大法人買賣超
+    資料來源: https://www.twse.com.tw/
+    """
+    try:
+        code = str(stock_code).replace('.TW', '').strip()
+        all_data = []
+
+        for days_back in range(0, min(days, 90), 5):
+            date = datetime.datetime.now() - datetime.timedelta(days=days_back)
+            date_str = date.strftime('%Y%m%d')
+
+            url = f"https://www.twse.com.tw/rwd/zh/fund/T86?date={date_str}&stockNo={code}&response=json&type=day"
+
+            headers = {
+                'User-Agent': 'Mozilla/5.0',
+                'Accept': 'application/json'
+            }
+
+            resp = requests.get(url, headers=headers, timeout=10)
+            if resp.status_code != 200:
+                continue
+
+            data = resp.json()
+
+            if data.get('stat') != 'OK' or 'data' not in data:
+                continue
+
+            for row in data['data']:
+                if len(row) >= 10:
+                    all_data.append({
+                        'date': row[0],
+                        'stock_id': code,
+                        'Foreign_Investor_Net': _parse_twse_number(row[4]),
+                        'Investment_Trust_Net': _parse_twse_number(row[5]),
+                        'Dealer_Net': _parse_twse_number(row[7]),
+                        'Volume': _parse_twse_number(row[1])
+                    })
+
+        if all_data:
+            df = pd.DataFrame(all_data)
+            df['date'] = pd.to_datetime(df['date'], format='%Y/%m/%d')
+            df = df.set_index('date').sort_index()
+            eh.logger.success("TWSE", f"取得 {code} 法人資料 {len(df)} 筆")
+            return df
+
+    except Exception as e:
+        eh.logger.error("TWSE", f"法人資料取得失敗: {e}")
+
+    return pd.DataFrame()
+
+
+def fetch_revenue_twse(stock_code, months=12):
+    """
+    使用台灣證交所 API 取得月營收資料
+    資料來源: https://www.twse.com.tw/
+    """
+    try:
+        code = str(stock_code).replace('.TW', '').strip()
+        all_data = []
+
+        for _ in range(min(months, 24)):
+            now = datetime.datetime.now()
+            year = now.year
+            month = now.month
+
+            url = f"https://www.twse.com.tw/rwd/zh/fund/T86?date={year}{month:02d}01&stockNo={code}&response=json"
+
+            headers = {
+                'User-Agent': 'Mozilla/5.0',
+                'Accept': 'application/json'
+            }
+
+            resp = requests.get(url, headers=headers, timeout=10)
+            if resp.status_code != 200:
+                continue
+
+            data = resp.json()
+
+            if data.get('stat') == 'OK' and 'data' in data:
+                for row in data['data']:
+                    if len(row) >= 3:
+                        all_data.append({
+                            'date': row[0],
+                            'stock_id': code,
+                            'revenue': _parse_twse_number(row[2]),
+                            'revenue_year': _parse_twse_number(row[4]) if len(row) > 4 else 0
+                        })
+
+        if all_data:
+            df = pd.DataFrame(all_data)
+            df['date'] = pd.to_datetime(df['date'], format='%Y/%m/%d')
+            df = df.set_index('date').sort_index()
+            eh.logger.success("TWSE", f"取得 {code} 營收資料 {len(df)} 筆")
+            return df
+
+    except Exception as e:
+        eh.logger.error("TWSE", f"營收資料取得失敗: {e}")
+
+    return pd.DataFrame()
+
+
+def _parse_twse_number(val):
+    """解析台灣證交所格式的数字（可能有逗号）"""
+    if val == '--' or val == '-' or val == '':
+        return 0
+    try:
+        return int(str(val).replace(',', '').replace('+', ''))
+    except:
+        return 0
+
+
+def fetch_data_yf(stock_code, days=5):
+    """使用 yfinance 取得股價（備用方案）"""
+    try:
+        ticker = yf.Ticker(f"{stock_code}.TW")
+        df = ticker.history(period=f"{days}d")
+        if df.empty:
+            return None
+        df = df.rename(columns={'Open': 'Open', 'High': 'High', 'Low': 'Low', 'Close': 'Close', 'Volume': 'Volume'})
+        df.index = pd.to_datetime(df.index).tz_localize(None)
+        return df
+    except Exception as e:
+        eh.logger.error("YFinance", f"取得 {stock_code} 失敗: {e}")
+        return None
+
 
 def fetch_data_yf(stock_code, days=5):
     """使用 yfinance 取得股價（備用方案）"""
@@ -199,77 +328,108 @@ def fetch_data(stock_code, days=730):
 
 @cached(cache=TTLCache(maxsize=500, ttl=43200))
 def fetch_financials(stock_code):
-    """ 抓取財報 (Financial Statements) & 月營收 - 增強版 """
-    
+    """ 抓取財報 (Financial Statements) & 月營收 - 支援 FinMind + TWSE 備用 """
+
     def _fetch():
         clean_code = str(stock_code).replace('.TW', '').strip()
         dl = DataLoader()
         if API_TOKEN: dl.login_by_token(api_token=API_TOKEN)
 
         start_date = (datetime.datetime.now() - datetime.timedelta(days=450)).strftime('%Y-%m-%d')
-        
+
         eh.logger.info("FinMind", f"下載財報: {clean_code} ...")
-        
-        df_fin = dl.taiwan_stock_financial_statement(stock_id=clean_code, start_date=start_date)
-        df_rev = dl.taiwan_stock_month_revenue(stock_id=clean_code, start_date=start_date)
-        
-        return df_fin, df_rev
-    
+
+        try:
+            df_fin = dl.taiwan_stock_financial_statement(stock_id=clean_code, start_date=start_date)
+            df_rev = dl.taiwan_stock_month_revenue(stock_id=clean_code, start_date=start_date)
+
+            if df_fin is not None and not df_fin.empty:
+                eh.logger.success("FinMind", f"FinMind 成功取得財報")
+                return df_fin, df_rev
+        except Exception as e:
+            eh.logger.error("FinMind", f"FinMind 財報失敗: {e}")
+
+        # Fallback: 使用 TWSE API
+        eh.logger.info("TWSE", f"嘗試 TWSE 取得營收...")
+        df_rev = fetch_revenue_twse(clean_code, months=12)
+
+        if df_rev is not None and not df_rev.empty:
+            eh.logger.success("TWSE", f"TWSE 成功取得營收 {len(df_rev)} 筆")
+            return pd.DataFrame(), df_rev
+
+        return pd.DataFrame(), pd.DataFrame()
+
     try:
         return eh.circuit_breakers['finmind'].call(_fetch)
-        
+
     except eh.CircuitOpenError:
-        eh.logger.warning("FinMind", "API 熔斷中，財報暫時無法取得")
-        return pd.DataFrame(), pd.DataFrame()
-        
+        eh.logger.warning("FinMind", "API 熔斷中，使用 TWSE 備用")
+        df_rev = fetch_revenue_twse(str(stock_code).replace('.TW', '').strip(), months=12)
+        return pd.DataFrame(), df_rev
+
     except Exception as e:
         eh.logger.error("FinMind", f"下載財報失敗: {stock_code}", {'error': str(e)})
-        return pd.DataFrame(), pd.DataFrame()
+        df_rev = fetch_revenue_twse(str(stock_code).replace('.TW', '').strip(), months=12)
+        return pd.Data(), df_rev
 
 @cached(cache=TTLCache(maxsize=500, ttl=3600))
 def fetch_institutional_investors(stock_code, days=90):
-    """ 抓取三大法人買賣超數據 - 增強版 """
-    
+    """ 抓取三大法人買賣超數據 - 支援 FinMind + TWSE 備用 """
+
     def _fetch():
         clean_code = str(stock_code).replace('.TW', '').strip()
         dl = DataLoader()
         if API_TOKEN: dl.login_by_token(api_token=API_TOKEN)
-        
+
         start_date = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime('%Y-%m-%d')
         eh.logger.info("FinMind", f"下載法人籌碼: {clean_code} ...")
-        
-        # 抓取個股法人買賣超
-        df = dl.taiwan_stock_institutional_investors(
-            stock_id=clean_code, 
-            start_date=start_date
-        )
-        
-        if df.empty:
-            eh.logger.warning("FinMind", f"股票 {clean_code} 籌碼資料為空")
-            return pd.DataFrame()
-        
-        eh.logger.success("FinMind", f"股票 {clean_code} 取得 {len(df)} 筆籌碼資料")
 
-        # 強制轉型：確保 buy/sell 是數字
-        df['buy'] = pd.to_numeric(df['buy'], errors='coerce').fillna(0)
-        df['sell'] = pd.to_numeric(df['sell'], errors='coerce').fillna(0)
-        
-        # 計算買賣超
-        df['net'] = df['buy'] - df['sell']
-        df['date'] = pd.to_datetime(df['date'])
-        
-        return df
-    
+        # 抓取個股法人買賣超
+        try:
+            df = dl.taiwan_stock_institutional_investors(
+                stock_id=clean_code,
+                start_date=start_date
+            )
+
+            if df is not None and not df.empty:
+                eh.logger.success("FinMind", f"FinMind 取得 {len(df)} 筆籌碼資料")
+
+                # 強制轉型：確保 buy/sell 是數字
+                if 'buy' in df.columns:
+                    df['buy'] = pd.to_numeric(df['buy'], errors='coerce').fillna(0)
+                if 'sell' in df.columns:
+                    df['sell'] = pd.to_numeric(df['sell'], errors='coerce').fillna(0)
+
+                # 計算買賣超
+                if 'buy' in df.columns and 'sell' in df.columns:
+                    df['net'] = df['buy'] - df['sell']
+                df['date'] = pd.to_datetime(df['date'])
+
+                return df
+        except Exception as e:
+            eh.logger.error("FinMind", f"FinMind 籌碼失敗: {e}")
+
+        # Fallback: 使用 TWSE API
+        eh.logger.info("TWSE", f"嘗試 TWSE 取得法人資料...")
+        df = fetch_institutional_twse(clean_code, days)
+
+        if df is not None and not df.empty:
+            eh.logger.success("TWSE", f"TWSE 取得 {len(df)} 筆法人資料")
+            return df
+
+        eh.logger.warning("TWSE", f"TWSE 也無法取得 {clean_code} 籌碼資料")
+        return pd.DataFrame()
+
     try:
         return eh.circuit_breakers['finmind'].call(_fetch)
-        
+
     except eh.CircuitOpenError:
-        eh.logger.warning("FinMind", "API 熔斷中，籌碼暫時無法取得")
-        return pd.DataFrame()
-        
+        eh.logger.warning("FinMind", "API 熔斷中，使用 TWSE 備用")
+        return fetch_institutional_twse(str(stock_code).replace('.TW', '').strip(), days)
+
     except Exception as e:
         eh.logger.error("FinMind", f"下載籌碼失敗: {stock_code}", {'error': str(e)})
-        return pd.DataFrame()
+        return fetch_institutional_twse(str(stock_code).replace('.TW', '').strip(), days)
 
 @cached(cache=TTLCache(maxsize=1, ttl=600))
 def get_latest_prices():
