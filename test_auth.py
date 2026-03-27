@@ -17,7 +17,7 @@ print("\n--- 測試 3: 管理員 (Ray Cheng) 執行 FOREIGN_BUY (應被允許) -
 res = requests.post(URL, json={'code': '2330', 'type': 'FOREIGN_BUY', 'access_code': 'Ray Cheng'})
 print(res.status_code, res.json().get('result', {}).get('title', 'Unknown'))
 
-print("\n--- 測試 4: 訪客執行 AI 回測 RETROLYZE (應被拒絕) ---")
+print("\n--- 測試 4: 訪客執行回測 RETROLYZE (應被拒絕) ---")
 res = requests.post(BT_URL, json={'symbol': '2330', 'start_date': '2023-01-01', 'end_date': '2023-12-31', 'access_code': ''})
 print(res.status_code, res.json())
 

@@ -36,7 +36,18 @@ def analyze(data_tuple, stock_code=None):
             if len(eps_data) >= 2:
                 last_eps = eps_data.iloc[-2]['value']
                 eps_growth = (current_eps - last_eps) / abs(last_eps) * 100 if last_eps != 0 else 0
-        
+                
+            # 計算去年和前年 EPS
+            eps_data['year'] = eps_data['date'].astype(str).str[:4]
+            yearly_eps = eps_data.groupby('year')['value'].sum().round(2).to_dict()
+            import datetime
+            curr_y = datetime.datetime.now().year
+            eps_ly = yearly_eps.get(str(curr_y - 1), "N/A")
+            eps_py = yearly_eps.get(str(curr_y - 2), "N/A")
+        else:
+            eps_ly = "N/A"
+            eps_py = "N/A"
+
         current_gm = gm_data.iloc[-1]['value'] if not gm_data.empty else 0
 
         # --- 2. 營收處理 (MoM, YoY) ---
@@ -87,11 +98,32 @@ def analyze(data_tuple, stock_code=None):
             signal = "財報危險 D"
             verdict = "獲利衰退，基本面轉弱"
 
+        # 取得本益比資訊
+        pe_info_str = "N/A"
+        cat_pe_str = "N/A"
+        try:
+            import sys
+            import os
+            sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+            from data_loader import get_stock_and_category_pe
+            if stock_code:
+                stock_pe, cat_avg_pe, cat_name = get_stock_and_category_pe(stock_code)
+                if stock_pe > 0:
+                    pe_info_str = f"{round(stock_pe, 2)} 倍"
+                if cat_avg_pe > 0:
+                    cat_pe_str = f"{round(cat_avg_pe, 2)} 倍 ({cat_name})"
+        except Exception as e:
+            print(f"Fetch PE error: {e}")
+
         # 整理數值
         vals = {
             '最新 EPS': round(current_eps, 2),
+            '去年 EPS': f"{eps_ly} 元" if eps_ly != "N/A" else "N/A",
+            '前年 EPS': f"{eps_py} 元" if eps_py != "N/A" else "N/A",
             'EPS 季增率': f"{round(eps_growth, 2)}%",
             '近四季 EPS (TTM)': round(ttm_eps, 2) if 'ttm_eps' in locals() else "N/A",
+            '個股本益比 (PE)': pe_info_str,
+            '類股平均本益比': cat_pe_str,
             '最新毛利率': f"{round(current_gm, 2)}%",
             '單月營收(億)': round(current_revenue, 2),
             '營收月增率 (MoM)': f"{round(rev_mom, 2)}%",

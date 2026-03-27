@@ -74,7 +74,7 @@ def analyze(df, stock_code=None):
         vals['現價'] = f"{close[-1]}"
 
         return {
-            'title': 'AI 型態辨識',
+            'title': '技術型態掃描',
             'signal': signal,
             'desc': desc,
             'vals': vals

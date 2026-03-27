@@ -1,7 +1,7 @@
 {
-    "name": "AI 金融戰情室 Pro",
-    "short_name": "AI 戰情室",
-    "description": "專業級台股 AI 分析與回測系統",
+    "name": "金融戰情室 Pro",
+    "short_name": "戰情室",
+    "description": "專業級台股分析與回測系統",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0d1117",

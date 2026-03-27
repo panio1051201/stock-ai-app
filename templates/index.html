@@ -145,6 +145,11 @@
             display: block;
         }
 
+        /* Modal 預設隱藏 */
+        .modal-overlay {
+            display: none;
+        }
+
         /* 大盤概況卡片 */
         .market-overview {
             background: linear-gradient(135deg, #161b22, #21262d);
@@ -2027,10 +2032,10 @@
                         if (priceEl) priceEl.textContent = data.price;
                         
                         if (changeEl) {
-                            const change = data.change || 0;
-                            const changePercent = data.change_percent || 0;
-                            changeEl.textContent = `${change >= 0 ? '+' : ''}${changePercent}%`;
-                            changeEl.className = `stock-change-simple ${change >= 0 ? 'price-up' : 'price-down'}`;
+                            // 將字串轉為數字再格式化，避免 ++ 問題
+                            const changePercent = parseFloat(data.change_percent) || 0;
+                            changeEl.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
+                            changeEl.className = `stock-change-simple ${changePercent >= 0 ? 'price-up' : 'price-down'}`;
                         }
                     }
                 } catch (e) {
@@ -2058,10 +2063,10 @@
                         if (priceEl) priceEl.textContent = data.price;
                         
                         if (changeEl) {
-                            const change = data.change || 0;
-                            const changePercent = data.change_percent || 0;
-                            changeEl.textContent = `${change >= 0 ? '+' : ''}${changePercent}%`;
-                            changeEl.className = `stock-change-simple ${change >= 0 ? 'price-up' : 'price-down'}`;
+                            // 將字串轉為數字再格式化，避免 ++ 問題
+                            const changePercent = parseFloat(data.change_percent) || 0;
+                            changeEl.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
+                            changeEl.className = `stock-change-simple ${changePercent >= 0 ? 'price-up' : 'price-down'}`;
                         }
                     }
                 } catch (e) {

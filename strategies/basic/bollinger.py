@@ -26,7 +26,7 @@ def analyze(df):
         upper = valid_df['upper_band'].tolist()
         middle = valid_df['middle_band'].tolist()
         lower = valid_df['lower_band'].tolist()
-
+ 
         # 分析最後一天的狀態
         latest = valid_df.iloc[-1]
         prev = valid_df.iloc[-2] if len(valid_df) > 1 else latest
@@ -51,6 +51,7 @@ def analyze(df):
         return {
             "signal": signal,
             "desc": desc,
+            "vals": {},
             "chart_data": {
                 "title": "布林通道 (BOLLINGER)",
                 "dates": dates,
