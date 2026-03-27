@@ -133,6 +133,18 @@
             background: #30363d;
         }
 
+        /* 手機版模式按鈕優化 */
+        @media (max-width: 480px) {
+            .mode-btn {
+                padding: 10px;
+                font-size: 0.85rem;
+            }
+            .simple-mode {
+                padding-left: 5px;
+                padding-right: 5px;
+            }
+        }
+
         /* 簡單模式面板 */
         .simple-mode {
             width: 95%;
@@ -684,11 +696,12 @@
             margin-top: auto;
             padding: 20px;
             text-align: center;
-            font-size: 0.75rem;
-            color: #484f58;
+            font-size: 0.85rem;
+            color: #6e7681;
             width: 90%;
             max-width: 600px;
             border-top: 1px solid #21262d;
+            line-height: 1.5;
         }
 
         #loading {
